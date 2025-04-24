@@ -1,0 +1,84 @@
+---
+title: "Exploratory Data Analysis (EDA) - IEEE-CIS Fraud Detection"
+author: "Alejandro Matías Astorga"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+```
+
+# 1.Introduction
+
+In this notebook, we perform an exploratory data analysis (EDA) on the IEEE-CIS Fraud Detection dataset. The goal is to understand the characteristics of fraudulent and non-fraudulent transactions, identify patterns, and prepare for machine learning modeling.
+
+# 2. Libraries
+
+```{r libraries}
+library(tidyverse)
+library(data.table)
+library(ggplot2)
+library(gridExtra) # For multiple plots
+```
+
+# 3. Data Loading
+
+
+```{r data-loading}
+library(tidyverse)
+library(data.table)
+library(ggplot2)
+library(gridExtra) # For multiple plots
+```
+
+
+# 4. Data Overview
+
+## 4.1 Missing Values
+
+```{r missing-values}
+# Percentage of missing values per column
+missing_data <- train_data %>%
+  summarise_all(~ mean(is.na(.))) %>%
+  pivot_longer(cols = everything(), names_to = "variable", values_to = "missing_perc") %>%
+  arrange(desc(missing_perc))
+
+head(missing_data, 20)
+```
+
+
+## 4.2 Class Balance
+
+```{r class-balance}
+# Distribution of target variable
+train_data %>%
+  count(isFraud) %>%
+  mutate(percentage = n / sum(n))
+```
+
+# 5. Exploratory Visualizations
+
+## 5.1 Transaction Amount Distribution
+```{r transaction-amound}
+ggplot(train_data, aes(x = TransactionAmt, fill = factor(isFraud))) +
+  geom_histogram(bins = 100, position = "identity", alpha = 0.6) +
+  scale_x_log10() + 
+  labs(title = "Transaction Amount Distribution (Log Scale)", fill = "Is Fraud")
+```
+
+## 5.2 Device Info
+
+```{r transaction-amound}
+train_data %>%
+  count(DeviceInfo) %>%
+  top_n(10, wt = n) %>%
+  ggplot(aes(x = reorder(DeviceInfo, n), y = n)) +
+  geom_col(fill = "steelblue") +
+  coord_flip() +
+  labs(title = "Top 10 Device Info", x = "Device Info", y = "Count")
+```
+
+# 6. Conclusions and Insights
+- Class Imbalance: Describe the fraud ratio.
+- Key Patterns: Summarize key insights from visualizations.
+- Next Steps: Prepare for feature engineering and modeling.
