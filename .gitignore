@@ -1,33 +1,57 @@
-# Python
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-venv/
-.env
+# ─── General ─────────────────────────────────────────────────────
+.DS_Store
+*.log
+*~
 
-# R
+# ─── R / RStudio ─────────────────────────────────────────────────
+.Rproj.user/
 .Rhistory
 .RData
-.Rproj.user/
-.Rproj
+.Ruserdata
+*.Rproj
 
-# Jupyter / R Notebooks
+# ─── Python ──────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.pyo
+venv/
+env/
+.env
+
+# ─── Jupyter / RMarkdown ─────────────────────────────────────────
 .ipynb_checkpoints/
-*.nb.html  # HTML output from notebooks
-*.Rmd_cache/
+*.html
+*.utf8.md
+*.knit.md
 
-# Data
-data/
-!data/README.md  # Keep a placeholder if needed
+# ─── VSCode ──────────────────────────────────────────────────────
+.vscode/
 
-# Models
-models/
-!models/README.md
+# ─── Data ────────────────────────────────────────────────────────
+data/processed/
+data/external/
+*.csv
+*.tsv
+*.parquet
+*.pkl
+*.joblib
+*.h5
 
-# Reports
-reports/
-!reports/README.md
+# ─── Models ──────────────────────────────────────────────────────
+models/*
+!models/.gitkeep
 
-# Other
-.DS_Store
+# ─── Airflow ─────────────────────────────────────────────────────
+logs/
+dags_output/
+airflow.cfg
+untracked_dags/
+
+# ─── MLflow ──────────────────────────────────────────────────────
+mlruns/
+
+# ─── Docker ──────────────────────────────────────────────────────
+docker/airflow/__pycache__/
+*.tar
+*.img
