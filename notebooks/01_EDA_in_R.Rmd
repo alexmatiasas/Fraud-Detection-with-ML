@@ -1,53 +1,124 @@
 ---
 title: "Exploratory Data Analysis (EDA) - IEEE-CIS Fraud Detection"
-author: "Alejandro Matías Astorga"
-output: html_document
+author: "Manuel Alejandro Matías Astorga"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+    number_sections: false
+    theme: flatly
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 ```
 
-# 1.Introduction
+# 1. Introduction
 
-In this notebook, we perform an exploratory data analysis (EDA) on the IEEE-CIS Fraud Detection dataset. The goal is to understand the characteristics of fraudulent and non-fraudulent transactions, identify patterns, and prepare for machine learning modeling.
+This notebook presents an Exploratory Data Analysis (EDA) of the [IEEE-CIS Fraud Detection](https://www.kaggle.com/competitions/ieee-fraud-detection) dataset, originally provided by Vesta Corporation for a Kaggle competition. The dataset contains anonymized transactional and identity information with the aim of building models to detect fraudulent transactions.
+
+The main goals of this EDA are:
+
+- To understand the class distribution and the impact of data imbalance.
+- To identify relevant patterns and trends in transaction data.
+- To explore key variables (e.g., transaction amount, time, email domain, device info).
+- To prepare meaningful insights that will guide future feature engineering and modeling steps.
 
 # 2. Libraries
 
+We'll require the next libraries for data manipulation and visualization. If they are not installed, the code will install them automatically.
+
+```{r download-libraries}
+required_packages <- c("tidyverse", "data.table", "gridExtra", "skimr", "ggcorrplot", "ranger", "naniar")
+
+for (pkg in required_packages) {
+  if (!require(pkg, character.only = TRUE)) {
+    install.packages(pkg)
+    library(pkg, character.only = TRUE)
+  }
+}
+```
+
 ```{r libraries}
-library(tidyverse)
-library(data.table)
-library(ggplot2)
-library(gridExtra) # For multiple plots
+# Core libraries for data analysis and visualization
+library(tidyverse)   # Includes dplyr, ggplot2, tibble, readr, etc.
+library(data.table)  # Efficient data loading and manipulation for large datasets
+
+# Additional visualization tools
+library(gridExtra)   # Arranging multiple ggplot2 plots side by side
+library(skimr)     # Quick overview of data frames, including missing values and distributions
+
+library(ggcorrplot)   # Correlation matrix visualization
+library(ranger)       # Fast implementation of random forests
+library(naniar)       # Tools for visualizing and handling missing data
 ```
 
 # 3. Data Loading
 
+The dataset is composed of two main training files:
 
-```{r data-loading}
-library(tidyverse)
-library(data.table)
-library(ggplot2)
-library(gridExtra) # For multiple plots
+- **`train_transaction.csv`**: Contains transactional data for online purchases, including variables like transaction amount, product codes, card and address information, and whether the transaction was flagged as fraudulent (`isFraud`).
+  
+- **`train_identity.csv`**: Contains identity-related features (e.g., device info, IP address, browser, email domain) for a subset of transactions. Only ~24% of the transaction records have corresponding identity information.
+
+To perform a comprehensive analysis, we merged both datasets using the common key `TransactionID`. We applied a **left join** (`all.x = TRUE`), meaning all rows from `train_transaction` are preserved, even if no identity information is available. This approach ensures that:
+
+- We maintain the **full set of transactions** for fraud analysis.
+- We include identity features **only when available**, which may be useful in feature engineering but are not required for every record.
+
+```{r data-loading, message=FALSE, warning=FALSE}
+# Load training datasets
+train_transaction <- fread("../data/ieee-fraud-detection/train_transaction.csv")
+train_identity    <- fread("../data/ieee-fraud-detection/train_identity.csv")
+
+# Merge datasets by TransactionID
+train_data <- merge(train_transaction, train_identity, by = "TransactionID", all.x = TRUE)
+
+# Check merged dimensions
+dim(train_data)
 ```
 
+`train_transaction` contains 590,540 rows and 394 columns, while `train_identity` has 144,233 rows and 41 columns. 
+
+This results in a merged dataset named `train_data`, with:
+
+- **590,540 rows** (same as `train_transaction`)
+- **434 columns**, combining both transaction and identity features
+
+Note: Although `train_transaction` and `train_identity` contain 394 and 41 columns respectively, they both include the `TransactionID` column. During the merge, this common column is used as the key and is not duplicated, resulting in a final dataset with 434 unique columns.
+
+Due to the high dimensionality and anonymized nature of the dataset (434 features), we selectively explore only a subset of features that are either commonly interpretable (e.g., `TransactionAmt`, `DeviceType`, `Email Domains`) or structurally relevant (e.g., `C1-C2`, `D1-D15`). Exploring all features manually is not scalable, and later stages of this project will incorporate variable importance and dimensionality reduction techniques (e.g., Random Forest, PCA) to guide modeling.
 
 # 4. Data Overview
 
+Let's analyze the dataset to understand its structure, missing values, and class balance.
+
 ## 4.1 Missing Values
 
-```{r missing-values}
-# Percentage of missing values per column
-missing_data <- train_data %>%
-  summarise_all(~ mean(is.na(.))) %>%
-  pivot_longer(cols = everything(), names_to = "variable", values_to = "missing_perc") %>%
-  arrange(desc(missing_perc))
+To assess the quality of the data, we calculated the percentage of missing values in each column using the `summarise_all(~ mean(is.na(.)))` function chain. This provides a quick overview of how much information is missing in each feature.
 
+```{r missing-values}
+# Compute missing value percentage per column
+missing_data <- train_data %>%
+  summarise_all(~ mean(is.na(.))) %>%   # Calculate the percentage of NAs per column.
+  pivot_longer(cols = everything(), names_to = "variable", values_to = "missing_perc") %>%  # Converts the result to a long format (variable, missing_perc) for analysis and visualization.
+  arrange(desc(missing_perc))  # Order the variables from highest to lowest number of missing values.
+
+# View top 20 variables with the highest percentage of missing values
 head(missing_data, 20)
 ```
 
+From the results above, we observe that several variables (especially `id_24`, `id_25`, `id_07`, `id_08`, and many features from the `id_` and `D` families) have over 85–99% missing values. This is critical because:
+
+- Such high missingness may suggest that these features are either optional, sparsely recorded, or system-dependent.
+- These features may not be useful for modeling without appropriate imputation, encoding, or dimensionality reduction.
+- We must decide whether to drop these variables or retain them by filling missing values (e.g., using domain knowledge or imputation strategies).
+
+This information will be key during the feature selection and preprocessing phases.
 
 ## 4.2 Class Balance
+
+This dataset is highly imbalanced, with a strong predominance of non-fraudulent transactions. Understanding this imbalance is crucial before training machine learning models, as it can bias the models toward the majority class.
 
 ```{r class-balance}
 # Distribution of target variable
@@ -56,29 +127,1021 @@ train_data %>%
   mutate(percentage = n / sum(n))
 ```
 
+**Observation**:
+
+The target variable `isFraud` is heavily imbalanced:
+
+- **Non-fraudulent transactions** (isFraud = 0): 569,877 (~96.5%)
+- **Fraudulent transactions** (isFraud = 1): 20,663 (~3.5%)
+
+This class imbalance can lead machine learning models to be biased toward predicting the majority class. To address this, we will consider appropriate strategies such as:
+
+- **Resampling techniques**: oversampling the minority class (e.g. SMOTE) or undersampling the majority class.
+- **Class weighting**: penalizing misclassification of minority class more.
+- **Anomaly detection approaches**: modeling the rare class as outliers.
+
+
 # 5. Exploratory Visualizations
 
 ## 5.1 Transaction Amount Distribution
+
 ```{r transaction-amound}
 ggplot(train_data, aes(x = TransactionAmt, fill = factor(isFraud))) +
   geom_histogram(bins = 100, position = "identity", alpha = 0.6) +
   scale_x_log10() + 
-  labs(title = "Transaction Amount Distribution (Log Scale)", fill = "Is Fraud")
+  labs(
+    title = "Transaction Amount Distribution (Log Scale)",
+    x = "Transaction Amount (log scale)",
+    y = "Count",
+    fill = "Is Fraud" 
+  )
 ```
+
+**Observation**:
+
+- The majority of transactions are clustered between 10 and 500 USD.
+- There is a heavy class imbalance, which is reflected in the plot: fraudulent transactions (label 1) are visually scarce compared to non-fraudulent ones.
+- Using log10 scaling on the x-axis helps reveal distribution patterns that would otherwise be compressed due to skewness.
+- Peaks around certain amounts (like ~$100) suggest transaction rounding behavior, which may be informative for feature engineering.
 
 ## 5.2 Device Info
 
-```{r transaction-amound}
+```{r device-info}
+# Compute top 10 most common device types
 train_data %>%
-  count(DeviceInfo) %>%
-  top_n(10, wt = n) %>%
-  ggplot(aes(x = reorder(DeviceInfo, n), y = n)) +
-  geom_col(fill = "steelblue") +
-  coord_flip() +
-  labs(title = "Top 10 Device Info", x = "Device Info", y = "Count")
+  count(DeviceInfo) %>%                          # Count occurrences of each device type
+  slice_max(n, n = 10) %>%                       # Select top 10 by count (modern dplyr alternative to top_n)
+  ggplot(aes(x = reorder(DeviceInfo, n), y = n)) +  # Reorder device names by frequency
+  geom_col(fill = "steelblue") +                 # Horizontal bar chart
+  coord_flip() +                                 # Flip coordinates for readability
+  labs(
+    title = "Top 10 Device Info", 
+    x = "Device Info", 
+    y = "Count"
+  )
 ```
 
-# 6. Conclusions and Insights
-- Class Imbalance: Describe the fraud ratio.
-- Key Patterns: Summarize key insights from visualizations.
-- Next Steps: Prepare for feature engineering and modeling.
+This plot displays the 10 most frequent DeviceInfo values in the training dataset.
+Notably, over 400,000 entries are missing this value, labeled as NA.
+Windows and iOS devices are the most common among non-missing values.
+This suggests the need for careful handling of this feature, potentially through imputation or categorical encoding.
+
+**Observation on Device Info:**
+
+The bar chart shows the top 10 most frequent values of the `DeviceInfo` column. The most common entry is clearly `"NA"`, which represents missing values. However, we also observe an unlabeled bar just below `"Windows"`, indicating the presence of empty strings (`""`).
+
+This distinction is important:
+- `NA` represents *missing data* in R.
+- `""` represents a *present but empty string*, often due to incomplete logging or device masking.
+
+These two cases should ideally be treated consistently, so we may consider replacing empty strings with `NA` before modeling or imputation.
+
+## 5.3 Temporal Features Analysis
+
+We start this section by converting the `TransactionDT` column to a more interpretable date-time format. The dataset begins at a reference point, which we define as "2017-12-01". This allows us to derive meaningful temporal features such as the hour of the transaction and the day of the week.
+
+```{r temporal-features}
+# Convert TransactionDT to hours and days
+# Note: the dataset starts at a reference point, we define a fake 'origin'
+origin_time <- as.POSIXct("2017-12-01", tz = "UTC")
+train_data$TransactionDate <- origin_time + train_data$TransactionDT
+
+train_data$TransactionHour <- lubridate::hour(train_data$TransactionDate)
+train_data$TransactionDay  <- lubridate::wday(train_data$TransactionDate, label = TRUE)
+```
+
+next step is visualizing the distribution of transactions by hour and day of the week. This helps us understand if there are specific times or days when fraudulent transactions are more likely to occur.
+
+```{r temporal-features-plot}
+# Plot fraud rate by hour
+ggplot(train_data, aes(x = TransactionHour, fill = factor(isFraud))) +
+  geom_histogram(binwidth = 1, position = "fill") +
+  labs(
+    title = "Fraud Ratio by Hour of Day",
+    x = "Hour of Day",
+    y = "Proportion",
+    fill = "Is Fraud"
+  ) +
+  scale_x_continuous(breaks = 0:23)
+```
+
+**Observation:**
+
+This plot shows the proportion of fraudulent vs. non-fraudulent transactions across different hours of the day.
+
+- Most transactions occur between **5 a.m. and 12 p.m.** (UTC reference).
+- **Fraudulent activity** is most frequent between **6 a.m. and 9 a.m.**, with a peak around **7 a.m.**
+- This temporal concentration may suggest:
+  - Automated fraud attempts during low supervision periods.
+  - Scheduled transaction scripts or bot activity.
+  - Behavioral patterns specific to a time zone (which we can't determine precisely due to anonymization, but worth noting).
+
+This information could be useful to:
+- Engineer features like `IsMorning`, `IsNight`, etc.
+- Apply time-aware models or rules.
+
+
+```{r temporal-features-plot2}
+ggplot(train_data, aes(x = TransactionDay, fill = factor(isFraud))) +
+  geom_bar(position = "fill") +
+  labs(
+    title = "Fraud Ratio by Day of Week",
+    x = "Day of Week",
+    y = "Proportion",
+    fill = "Is Fraud"
+  )
+```
+**Observation:**
+
+This bar plot shows the proportion of fraudulent transactions by day of the week.
+
+- The fraud rate remains **remarkably stable** across all days, with no major peaks or drops.
+- This uniformity may imply:
+  - The fraud system is **automated**, running independently of the calendar.
+  - There is **no strong behavioral signal** in the day-of-week feature.
+
+As a result, `TransactionDay` may have **limited predictive power on its own**, but could still be useful when combined with other temporal or categorical features.
+
+## 5.4 Categorical Features Analysis
+
+We will explore some categorical features that may provide insights into the fraud detection process. The following features are of particular interest:
+
+- `ProductCD`: Product code associated with the transaction.
+- `card4`: Card type (e.g., Visa, Mastercard).
+- `card6`: Card type (e.g., credit, debit).
+- `P_emaildomain`: Email domain of the payer.
+- `R_emaildomain`: Email domain of the recipient.
+- `DeviceType`: Type of device used for the transaction.
+
+We analyze the fraud proportions across these categories using proportion-based bar plots (`position = "fill"` in `ggplot2`) to better visualize class imbalance across each level.
+
+```{r categorical-features}
+# List of selected categorical features to analyze
+cat_vars <- c("ProductCD", "card4", "card6", "P_emaildomain", "R_emaildomain", "DeviceType")
+```
+
+- `ProductCD`
+
+```{r productcd-barplot}
+ggplot(train_data, aes(x = ProductCD, fill = factor(isFraud))) +
+  geom_bar(position = "fill") +
+  labs(
+    title = "Fraud Proportion by ProductCD",
+    x = "ProductCD",
+    y = "Proportion",
+    fill = "Is Fraud"
+  )
+```
+
+**Observation**:
+- Product code C has a noticeably higher fraud rate compared to the others.
+- This may suggest that some product categories are more prone to fraud, perhaps due to their price range, popularity, or nature of transactions.
+
+- `card4`
+
+```{r card4-barplot}
+ggplot(train_data, aes(x = card4, fill = factor(isFraud))) +
+  geom_bar(position = "fill") +
+  labs(
+    title = "Fraud Proportion by Card Type (card4)",
+    x = "Card Type",
+    y = "Proportion",
+    fill = "Is Fraud"
+  )
+```
+
+**Observation**:
+- Among card types, `Discover` shows the highest fraud proportion.
+- `Visa` and `Mastercard` dominate in volume, but their fraud ratio is relatively lower.
+
+- `card6`
+
+```{r card6-barplot}
+ggplot(train_data, aes(x = card6, fill = factor(isFraud))) +
+  geom_bar(position = "fill") +
+  labs(
+    title = "Fraud Proportion by Card Type (card6)",
+    x = "Card Type (card6)",
+    y = "Proportion",
+    fill = "Is Fraud"
+  )
+```
+
+**Observation**:
+- Fraud is more frequent in `credit` cards compared to `debit` or `charge` cards.
+- Transactions labeled as `debit or credit` are rare and also show lower fraud prevalence, this may due to the duplication of options since there is a separate `credit` and `debit` option..
+
+- `P_emaildomain`
+
+```{r p-emaildomain-barplot}
+# Top 10 most common payer email domains
+train_data %>%
+  count(P_emaildomain) %>%
+  slice_max(n, n = 10) %>%
+  pull(P_emaildomain) -> top_p_domains
+
+ggplot(train_data %>% filter(P_emaildomain %in% top_p_domains),
+       aes(x = P_emaildomain, fill = factor(isFraud))) +
+  geom_bar(position = "fill") +
+  labs(
+    title = "Fraud Proportion by Payer Email Domain",
+    x = "Payer Email Domain (Top 10)",
+    y = "Proportion",
+    fill = "Is Fraud"
+  ) +
+  coord_flip()
+```
+
+**Observation**:
+- Most common payer domains (e.g. `outlook.com`, `hotmail.com`, `gmail.com`, `yahoo.com`) show low fraud rates.
+- Fraud proportions appear relatively low across these domains, although `outlook.com` and `hotmail.com` show a slightly higher fraud ratio compared to others like `gmail.com` or `icloud.com`.
+- Domains like `anonymous.com` or rare email providers may require additional attention.
+
+
+- `R_emaildomain`
+
+```{r r-emaildomain-barplot}
+# Top 10 most common recipient email domains
+train_data %>%
+  count(R_emaildomain) %>%
+  slice_max(n, n = 10) %>%
+  pull(R_emaildomain) -> top_r_domains
+
+ggplot(train_data %>% filter(R_emaildomain %in% top_r_domains),
+       aes(x = R_emaildomain, fill = factor(isFraud))) +
+  geom_bar(position = "fill") +
+  labs(
+    title = "Fraud Proportion by Recipient Email Domain",
+    x = "Recipient Email Domain (Top 10)",
+    y = "Proportion",
+    fill = "Is Fraud"
+  ) +
+  coord_flip()
+```
+
+**Observation**:
+- Recipient email domains exhibit wider variation.
+- Notably, domains such as `outlook.com`, `icloud.com` and `gmail.com` have higher fraud proportions, suggesting possible use in fraudulent operations.
+
+- `DeviceType`
+
+```{r device-type-barplot}
+ggplot(train_data, aes(x = DeviceType, fill = factor(isFraud))) +
+  geom_bar(position = "fill") +
+  labs(
+    title = "Fraud Proportion by Device Type",
+    x = "Device Type",
+    y = "Proportion",
+    fill = "Is Fraud"
+  )
+```
+
+**Observation**:
+- `Mobile` transactions exhibit a slightly higher proportion of fraud compared to desktop.
+- This aligns with common patterns in fraud behavior exploiting less secure or unsupervised `mobile` environments.
+
+## 5.5 Continuous Features Analysis - C1 to C14
+
+The dataset includes a family of anonymized continuous variables labeled `C1` through `C14.` These features likely capture aggregated behavioral metrics or historical transaction patterns.
+
+We will begin by visualizing `C1` and `C2` in detail, and then generalize the analysis to the entire set of C variables.
+
+### 5.5.1 C1 and C2 – Initial Exploration
+
+```{r c1-and-c2-distribution}
+# Gather variables into long format for facetting
+train_data %>%
+  select(C1, C2, isFraud) %>%
+  pivot_longer(cols = c(C1, C2), names_to = "Variable", values_to = "Value") %>%
+  ggplot(aes(x = Value, fill = factor(isFraud))) +
+  geom_histogram(bins = 100, position = "identity", alpha = 0.5) +
+  facet_wrap(~ Variable, scales = "free") +
+  scale_x_continuous(trans = "log1p") +
+  labs(
+    title = "Distribution of C1 and C2 by Fraud Status",
+    x = "Value (log scale)",
+    y = "Count",
+    fill = "Is Fraud"
+  )
+```
+
+**Observation**:
+- The distributions are highly skewed to the right.
+- Fraudulent and non-fraudulent transactions overlap heavily in this space, though fine-grained differences might still be exploitable with modeling.
+- A log transformation improves visualization but still shows long-tailed distributions.
+
+To reduce noise from extreme outliers and improve interpretability, we apply filtering below the 99th percentile.
+
+```{r c1-and-c2-distribution-filtered}
+# Calculating 99th percentiles for C1 and C2
+c1_99 <- quantile(train_data$C1, 0.99, na.rm = TRUE)
+c2_99 <- quantile(train_data$C2, 0.99, na.rm = TRUE)
+
+# Filtering and plotting
+train_data %>%
+  filter(C1 < c1_99, C2 < c2_99) %>%
+  select(C1, C2, isFraud) %>%
+  pivot_longer(cols = c(C1, C2), names_to = "Variable", values_to = "Value") %>%
+  ggplot(aes(x = Value, fill = factor(isFraud))) +
+  geom_histogram(bins = 60, position = "identity", alpha = 0.5) +
+  facet_wrap(~ Variable, scales = "free") +
+  labs(
+    title = "Distribution of C1 and C2 by Fraud Status (Filtered < 99th Percentile)",
+    x = "Value",
+    y = "Count",
+    fill = "Is Fraud"
+  )
+```
+
+**Note**: While we remove outliers for visualization clarity, they are retained for modeling, as they may encode meaningful anomalies.
+
+### 5.5.2 General Analysis of C1–C14
+
+Now, we extend the distribution analysis to the full set of C variables.
+
+```{r c-vars-full-distribution}
+# Identify C variables
+# Identify C variables
+c_vars <- names(train_data)[grepl("^C\\d+$", names(train_data))]
+
+# Convert to long format
+c_long <- train_data %>%
+  select(isFraud, all_of(c_vars)) %>%
+  pivot_longer(cols = all_of(c_vars), names_to = "Variable", values_to = "Value")
+
+# Calculate thresholds by variable
+thresholds_c <- c_long %>%
+  group_by(Variable) %>%
+  summarise(threshold = quantile(Value, 0.99, na.rm = TRUE), .groups = "drop")
+
+# Join and filter
+c_long <- c_long %>%
+  left_join(thresholds_c, by = "Variable") %>%
+  filter(is.na(Value) | Value < threshold)
+
+# Plot
+ggplot(c_long, aes(x = Value, fill = factor(isFraud))) +
+  geom_histogram(bins = 60, position = "identity", alpha = 0.5) +
+  facet_wrap(~ Variable, scales = "free", ncol = 3) +
+  labs(
+    title = "Distribution of C1–C14 Variables (Filtered < 99th Percentile)",
+    x = "Value", y = "Count", fill = "Is Fraud"
+  ) +
+  theme_minimal()
+```
+
+```{r c-vars-summary}
+plot_c_block <- function(vars_subset) {
+  c_long_block <- c_long %>%
+    filter(Variable %in% vars_subset) %>%
+    mutate(Variable = factor(Variable, levels = vars_subset))  # <-- Ordena como quieras
+
+  ggplot(c_long_block, aes(x = Value, fill = factor(isFraud))) +
+    geom_histogram(bins = 60, position = "identity", alpha = 0.5) +
+    facet_wrap(~ Variable, scales = "free", ncol = 2) +
+    labs(
+      title = paste0("Distribution of ", paste(vars_subset, collapse = ", "), " (Filtered < 99th Percentile)"),
+      x = "Value", y = "Count", fill = "Is Fraud"
+    ) +
+    theme_minimal()
+}
+```
+
+```{r c1-to-c5-distribution}
+plot_c_block(paste0("C", 1:5))
+```
+
+**Note**: Variable C3 is not shown because it likely contains only a constant value or zeros (checking the data frame, we observed is a column full of zeros as far as we know), which offers no variation for distribution plots or predictive modeling.
+
+```{r c6-to-c10-distribution}
+plot_c_block(paste0("C", 6:10))
+```
+
+```{r c11-to-c14-distribution}
+plot_c_block(paste0("C", 11:14))
+```
+
+```{r c-vars-summary-skim}
+skim(select(train_data, all_of(c_vars)))
+```
+
+
+
+## 5.6 Continuous Features Analysis - D1 to D15
+
+Let's check what are the `D` variables
+
+```{r list-d-vars}
+# List all variables starting with "D"
+names(train_data)[grepl("^D", names(train_data))]
+```
+
+### 5.6.1 Distribution of D1 to D5 (Filtered < 99th Percentile)
+
+The `D` variables are anonymous temporal or delay-related features. Since their meaning is unknown, we group and visualize them in blocks of five, filtering extreme outliers (above 99th percentile) to highlight more common patterns.
+
+```{r d1-to-d5-distribution}
+# Step 1: define the D1 to D5 variables
+d_vars_1 <- paste0("D", 1:5)
+
+# Step 2: calculate 99th percentile thresholds
+d_thresholds_1 <- sapply(d_vars_1, function(var) {
+  quantile(train_data[[var]], 0.99, na.rm = TRUE)
+})
+names(d_thresholds_1) <- d_vars_1
+
+# Step 3: create filtered version of the dataset
+train_data_d1_d5 <- train_data
+for (var in d_vars_1) {
+  threshold <- d_thresholds_1[[var]]
+  train_data_d1_d5 <- train_data_d1_d5 %>%
+    filter(is.na(.data[[var]]) | .data[[var]] < threshold)
+}
+
+# Step 4: reshape for plotting
+d_long_1 <- train_data_d1_d5 %>%
+  select(isFraud, all_of(d_vars_1)) %>%
+  pivot_longer(cols = all_of(d_vars_1), names_to = "variable", values_to = "value") %>%
+  filter(!is.na(value))
+
+# Optional: enforce variable order for facet
+d_long_1$variable <- factor(d_long_1$variable, levels = d_vars_1)
+
+# Step 5: plot
+ggplot(d_long_1, aes(x = value, fill = factor(isFraud))) +
+  geom_histogram(bins = 50, position = "identity", alpha = 0.6) +
+  facet_wrap(~ variable, scales = "free", ncol = 2) +
+  labs(
+    title = "Distribution of D1–D5 Variables (Filtered < 99th Percentile)",
+    x = "Value",
+    y = "Count",
+    fill = "Is Fraud"
+  ) +
+  theme_minimal()
+```
+
+```{r d6-to-d10-distribution}
+# Step 1: define the D6 to D10 variables
+d_vars_2 <- paste0("D", 6:10)
+
+# Step 2: calculate 99th percentile thresholds
+d_thresholds_2 <- sapply(d_vars_2, function(var) {
+  quantile(train_data[[var]], 0.99, na.rm = TRUE)
+})
+names(d_thresholds_2) <- d_vars_2
+
+# Step 3: create filtered version of the dataset
+train_data_d6_d10 <- train_data
+for (var in d_vars_2) {
+  threshold <- d_thresholds_2[[var]]
+  train_data_d6_d10 <- train_data_d6_d10 %>%
+    filter(is.na(.data[[var]]) | .data[[var]] < threshold)
+}
+
+# Step 4: reshape for plotting
+d_long_2 <- train_data_d6_d10 %>%
+  select(isFraud, all_of(d_vars_2)) %>%
+  pivot_longer(cols = all_of(d_vars_2), names_to = "variable", values_to = "value") %>%
+  filter(!is.na(value))
+
+# Optional: enforce variable order for facet
+d_long_2$variable <- factor(d_long_2$variable, levels = d_vars_2)
+
+# Step 5: plot
+ggplot(d_long_2, aes(x = value, fill = factor(isFraud))) +
+  geom_histogram(bins = 50, position = "identity", alpha = 0.6) +
+  facet_wrap(~ variable, scales = "free", ncol = 2) +
+  labs(
+    title = "Distribution of D6–D10 Variables (Filtered < 99th Percentile)",
+    x = "Value",
+    y = "Count",
+    fill = "Is Fraud"
+  ) +
+  theme_minimal()
+```
+
+```{r d11-to-d15-distribution}
+# Step 1: define the D11 to D15 variables
+d_vars_3 <- paste0("D", 11:15)
+
+# Step 2: calculate 99th percentile thresholds
+d_thresholds_3 <- sapply(d_vars_3, function(var) {
+  quantile(train_data[[var]], 0.99, na.rm = TRUE)
+})
+names(d_thresholds_3) <- d_vars_3
+
+# Step 3: create filtered version of the dataset
+train_data_d11_d15 <- train_data
+for (var in d_vars_3) {
+  threshold <- d_thresholds_3[[var]]
+  train_data_d11_d15 <- train_data_d11_d15 %>%
+    filter(is.na(.data[[var]]) | .data[[var]] < threshold)
+}
+
+# Step 4: reshape for plotting
+d_long_3 <- train_data_d11_d15 %>%
+  select(isFraud, all_of(d_vars_3)) %>%
+  pivot_longer(cols = all_of(d_vars_3), names_to = "variable", values_to = "value") %>%
+  filter(!is.na(value))
+
+# Optional: enforce variable order for facet
+d_long_3$variable <- factor(d_long_3$variable, levels = d_vars_3)
+
+# Step 5: plot
+ggplot(d_long_3, aes(x = value, fill = factor(isFraud))) +
+  geom_histogram(bins = 50, position = "identity", alpha = 0.6) +
+  facet_wrap(~ variable, scales = "free", ncol = 2) +
+  labs(
+    title = "Distribution of D11–D15 Variables (Filtered < 99th Percentile)",
+    x = "Value",
+    y = "Count",
+    fill = "Is Fraud"
+  ) +
+  theme_minimal()
+```
+
+```{r d-vars-summary}
+# Summary statistics for D variables
+d_vars <- paste0("D", 1:15)
+skim(select(train_data, all_of(d_vars)))
+```
+
+Now that we have explored the individual distributions of continuous features, the next step is to evaluate pairwise correlations to detect redundancy and guide feature selection for the baseline model.
+
+## 5.7 Correlation Analysis
+
+In this section, we examine linear relationships between numeric variables to identify:
+
+- Redundancy or multicollinearity
+- Structural patterns and feature clusters
+- Variables that may be useful (or harmful) in modeling
+
+These insights can inform `feature selection`, `regularization`, and `dimensionality reduction` strategies such as `PCA` or `Lasso`.
+
+## 5.7.1 Selection of Numerical Features
+
+We restrict the analysis to numeric variables with fewer than 20% missing values to ensure robustness of correlations.
+
+```{r correlation-numeric-selection}
+# Identify numeric columns with low NA ratio
+# Exclude TransactionID explicitly
+numeric_vars <- train_data %>%
+  select(where(is.numeric)) %>%
+  select(-TransactionID) %>% 
+  summarise_all(~ mean(is.na(.))) %>%
+  pivot_longer(everything(), names_to = "Variable", values_to = "NA_Percent") %>%
+  filter(NA_Percent < 0.2) %>%
+  pull(Variable)
+
+# Filter and clean
+train_data_num <- train_data %>%
+  select(all_of(numeric_vars)) %>%
+  drop_na()
+```
+
+## 5.7.2 Computing Correlation Matrix
+
+We compute the **Pearson correlation matrix** for the cleaned numeric dataset.
+
+```{r correlation-matrix}
+# Compute Pearson correlation matrix
+cor_matrix <- cor(train_data_num, use = "complete.obs", method = "pearson")
+
+# Quick check
+dim(cor_matrix)
+head(cor_matrix[, 1:5])
+```
+
+## 5.7.3 Visualizing Correlation Matrix
+
+This global heatmap offers a high-level view of how numerical variables relate to each other.
+
+```{r correlation_heatmap, message=FALSE}
+# Plot
+ggcorrplot(cor_matrix,
+           hc.order = TRUE, type = "lower", lab = FALSE,
+           colors = c("steelblue", "white", "darkred"),
+           title = "Correlation Matrix of Selected Numerical Variables",
+           ggtheme = theme_minimal())
+```
+
+*Note: Due to the high number of features, the full matrix may be hard to interpret directly. The following sections highlight key patterns.*
+
+## 5.7.4 Top Correlations with `isFraud`
+
+We extract the variables most linearly associated with the target.
+
+```{r correlation_heatmap2}
+# Ordering by absolute correlation with isFraud
+cor_target <- cor_matrix[, "isFraud"]
+cor_target_sorted <- sort(abs(cor_target), decreasing = TRUE)
+
+# View top correlations
+head(cor_target_sorted, 20)
+```
+
+**Observation**:
+
+- No feature has a strong linear correlation with isFraud (> 0.15).
+- The most correlated variables include V283, V281, V292, V291, V315, among others.
+- This suggests that fraud detection may require nonlinear patterns or interactions.
+
+### 5.7.5 Correlation Among Top Predictors
+
+We isolate and visualize the top 15 variables most correlated with the target.
+
+```{r correlation_heatmap2-subset}
+# Obtain the top 15 variables with highest absolute correlation with isFraud (except isFraud itself)
+top_vars <- names(cor_target_sorted)[2:16]
+
+# Subset the correlation matrix for these variables
+cor_subset <- cor_matrix[top_vars, top_vars]
+
+# Heatmap
+ggcorrplot(cor_subset,
+           hc.order = TRUE, type = "lower", lab = TRUE,
+           colors = c("steelblue", "white", "darkred"),
+           title = "Correlation Matrix of Top 15 Variables",
+           ggtheme = theme_minimal())
+```
+
+**Observation**:
+
+- Variables such as `V282`–`V283`, `V313`–`V315`, and `V291`–`V292` show strong mutual correlations, indicating:
+  - Possible feature redundancy
+  - Opportunities for aggregation or dimensionality reduction
+
+### 5.7.6 Detecting Multicollinearity (Corr > 0.90)
+
+To identify highly redundant variables, we extract all variable pairs with correlation above 0.90 (excluding self-correlation).
+
+```{r correlation_heatmap2-subset2}
+high_corr_pairs <- which(abs(cor_matrix) > 0.9 & abs(cor_matrix) < 1, arr.ind = TRUE)
+
+# Remove symmetric duplicates
+high_corr_df <- as.data.frame(high_corr_pairs)
+high_corr_df <- high_corr_df[high_corr_df$row < high_corr_df$col, ]
+
+# Add variable names and correlation values
+high_corr_df <- high_corr_df %>%
+  mutate(var1 = rownames(cor_matrix)[row],
+         var2 = colnames(cor_matrix)[col],
+         corr = cor_matrix[cbind(row, col)]) %>%
+  arrange(desc(abs(corr)))
+
+head(high_corr_df, 10)
+```
+
+**Observations**
+
+- The top variables correlated with isFraud (e.g., `V283`, `V281`, `V292`, `V315`, `V289`) exhibit relatively low Pearson correlation coefficients (mostly under 0.15). This suggests that no single variable is linearly predictive of fraud on its own, reaffirming the complex and subtle nature of fraud detection.
+- A subset of features (e.g., `V69`, `V90`, `V291`) show some moderate correlation, but these are likely to be more effective when used together or transformed (e.g., via non-linear models or interactions).
+- Several pairs of variables exhibit very high mutual correlation (above 0.99), such as:
+  - `C7` ↔ `C12`
+  - `C10` ↔ `C8`
+  - `C1` ↔ `C11`
+  - `V101` ↔ `V293`
+  - `V95` ↔ `V101`, `V279`
+  
+These indicate redundancy or multicollinearity, which could impact model stability and interpretability—particularly for linear models.
+- `TransactionID` was excluded from the analysis, as it is an identifier and does not convey predictive information about the target.
+
+**Next steps (planning)**
+
+- Use dimensionality reduction techniques like *PCA* or *autoencoders* to handle correlated variables and reduce noise in the feature space.
+- Apply regularized models (e.g., *Lasso*, *Ridge*, *Elastic Net*) that can manage multicollinearity and perform variable selection automatically.
+- Consider dropping or consolidating highly correlated variables, especially where domain knowledge is lacking due to anonymization. Groupings like `Vxxx` or `Cxx` can also be explored via unsupervised clustering or feature aggregation.
+
+## 5.8 Feature Importance (Baseline Model)
+
+In this section, we estimate the relative importance of features using a **Random Forest** classifier. This approach allows us to identify which variables contribute most to the prediction of fraudulent transactions, even without optimizing the model for accuracy yet.
+
+We use the `ranger` package, a fast implementation of *Random Forests*, to compute variable importance based on **Gini impurity reduction**.
+
+### 5.8.1 Preparing data
+
+We reuse the cleaned numeric dataset (`train_data_num`) built in the correlation section. Since ranger requires the target variable to be a factor, we convert `isFraud` accordingly.
+
+```{r ranger}
+# Add isFraud as a factor (classification requirement)
+train_data_rf <- train_data_num %>%
+  mutate(isFraud = factor(isFraud))  # Make sure it's a factor for ranking
+```
+
+### 5.8.2 Training a Random Forest Model
+
+We train a lightweight model with 100 trees, using default settings and `importance = "impurity"` to retrieve **Gini-based feature** rankings.
+
+```{r ranger-model}
+# Training simple model to estimate importance
+rf_model <- ranger(
+  formula = isFraud ~ .,
+  data = train_data_rf,
+  importance = "impurity",     
+  num.trees = 100,              
+  seed = 123                    
+)
+```
+
+*Note: This model is not meant for final prediction but for preliminary insight into variable contributions.*
+
+### 5.8.3 Extracting and inspectioning importance
+
+We extract the feature importances into a `tidy` dataframe, sorted in descending order.
+
+```{r ranger-importance}
+# Convertir a data frame ordenado
+importance_df <- as.data.frame(rf_model$variable.importance) %>%
+  tibble::rownames_to_column("Variable") %>%
+  rename(Importance = `rf_model$variable.importance`) %>%
+  arrange(desc(Importance))
+
+# Mostrar top 20
+head(importance_df, 20)
+```
+
+### 5.8.4 Ranking visualization
+
+The top 20 variables by importance are shown below.
+
+```{r ranger-importance-plot}
+importance_df %>%
+  slice_max(order_by = Importance, n = 20) %>%
+  ggplot(aes(x = reorder(Variable, Importance), y = Importance)) +
+  geom_col(fill = "steelblue") +
+  coord_flip() +
+  labs(
+    title = "Top 20 Feature Importances (Random Forest)",
+    x = "Variable",
+    y = "Importance"
+  ) +
+  theme_minimal()
+```
+
+**Observations**
+- The most important features for distinguishing fraud include:
+  - `TransactionDT` (time-related)
+  - `card1`, `card2`, `card5` (card identifiers)
+  - `addr1` (billing region)
+  - `TransactionAmt` (amount of the transaction)
+  - Several anonymized behavioral or delay features (`D10`, `D15`, `C13`, `C1`, etc.)
+- Variables like `TransactionHour` (engineered from timestamp) also appear high in the ranking, confirming the relevance of temporal patterns.
+- These insights can guide:
+  - Feature selection (e.g., reducing dimensionality)
+  - Feature engineering (e.g., combinations or interactions)
+  - Model interpretation and post-hoc analysis (e.g., SHAP, PDP)
+  
+## 5.9 Cross-feature exploratory analysis
+
+To better understand how fraud is distributed across categories, we compute the fraud rate for selected categorical variables. This highlights which categories are more likely to be associated with fraudulent behavior.
+
+```{r fraud-rate-function}
+# Helper function to plot fraud rates for a categorical variable
+plot_fraud_rate <- function(data, var) {
+  data %>%
+    group_by(.data[[var]]) %>%
+    summarise(
+      Count = n(),
+      FraudRate = mean(isFraud, na.rm = TRUE)
+    ) %>%
+    filter(Count > 200) %>%  # Optional: filter rare categories
+    ggplot(aes(x = reorder(.data[[var]], -FraudRate), y = FraudRate)) +
+    geom_col(fill = "steelblue") +
+    labs(
+      title = paste("Fraud Rate by", var),
+      x = var,
+      y = "Fraud Rate"
+    ) +
+    theme_minimal()
+}
+```
+
+### 5.9.1 Fraud Rate by `ProductCD`
+
+```{r fraud-rate-productcd}
+# Plot for ProductCD
+plot_fraud_rate(train_data, "ProductCD")
+```
+
+**Observations**:
+
+- Category `C` has the highest fraud rate (nearly 12%), while `W` has the lowest.
+- This suggests that transactions involving product type `C` should be treated with increased scrutiny during model training or rule design.
+
+### 5.9.2 Fraud Rate by `card4`
+
+```{r fraud-rate-card4}
+# Plot for card4
+plot_fraud_rate(train_data, "card4")
+```
+
+**Observations**:
+
+- `Discover` cards exhibit the highest fraud rate (around 8%), compared to others like `Visa` and `Mastercard.`
+- This pattern may reflect underlying behavioral or systemic differences in transactions processed by these networks.
+
+### 5.9.3 Fraud Rate by `card6`
+
+```{r fraud-rate-card6}
+# Plot for card6
+plot_fraud_rate(train_data, "card6")
+```
+
+**Observations**:
+
+- `Credit` cards show a significantly higher fraud rate than debit cards.
+- This might relate to the differing risk profiles or spending habits associated with each type.
+
+### 5.9.4 Summary
+
+This cross-feature fraud rate analysis reinforces that some categorical variables are informative for fraud prediction. Product type (`ProductCD`), card provider (`card4`), and card type (`card6`) show meaningful variation in fraud rates across categories. These features may be especially valuable for downstream modeling, and further interaction effects could be explored.
+
+## 5.10 Dimensionality Reduction with PCA
+
+Principal Component Analysis (PCA) is a technique used to reduce the dimensionality of high-dimensional data by transforming correlated variables into a smaller number of uncorrelated variables called principal components. Although PCA is not ideal for interpretability, it is useful for visualizing potential separation between fraudulent and non-fraudulent transactions.
+
+### 5.10.1 Data Preparation for PCA
+
+We use the cleaned numerical dataset from the correlation analysis (`train_data_num`) and apply **z-score standardization** (mean = 0, std. dev. = 1) to each variable before computing the principal components.
+
+```{r pca-preparation}
+# Ensure all numeric values are scaled
+numeric_scaled <- train_data_num %>%
+  select(-isFraud) %>%
+  mutate_all(~ scale(.) %>% as.vector())
+
+# Attach target back
+pca_data <- cbind(numeric_scaled, isFraud = train_data_num$isFraud)
+```
+
+**Note**:
+	•	Out of 177 numeric features available (excluding `isFraud`), 176 were used in PCA.
+	•	The variable `V305` was excluded because it had zero variance (i.e., constant value across samples). Variables with zero variance do not contribute to PCA and must be removed.
+
+### 5.10.2 PCA Execution
+
+To make PCA computationally tractable, we randomly sample 10,000 observations from the dataset and remove variables with zero variance.
+
+```{r pca-execution}
+# Step 1: sample 10,000 rows (with isFraud)
+set.seed(123)
+pca_sample <- train_data_num %>%
+  sample_n(10000)
+
+# Step 2: drop isFraud and remove constant columns (zero variance)
+scaled_sample <- pca_sample %>%
+  select(-isFraud) %>%
+  select(where(~ var(.x, na.rm = TRUE) > 0)) %>%
+  mutate_all(~ scale(.) %>% as.vector())
+
+# Step 3: apply PCA
+pca_result <- prcomp(scaled_sample, center = TRUE, scale. = TRUE)
+
+# Step 4: create plot data
+pca_df <- as.data.frame(pca_result$x[, 1:2])
+pca_df$isFraud <- factor(pca_sample$isFraud)
+
+# Step 5: plot
+ggplot(pca_df, aes(x = PC1, y = PC2, color = isFraud)) +
+  geom_point(alpha = 0.5, size = 1) +
+  labs(
+    title = "PCA (Sample of 10K)",
+    x = "PC1", y = "PC2",
+    color = "Is Fraud"
+  ) +
+  theme_minimal()
+```
+
+Interpretation:
+
+- Each point represents a transaction, projected into a 2D space formed by the two directions of greatest variance in the dataset: PC1 and PC2.
+- Transactions are not clearly separated by fraud status, confirming that fraud patterns are subtle and not captured by linear combinations alone.
+- Some outliers lie far along the principal axes, suggesting transactions that deviate significantly from typical behavior. These may be interesting candidates for anomaly detection.
+- Most fraudulent transactions are embedded within the large cloud of normal transactions, again reinforcing the challenge of detecting fraud via simple linear boundaries.
+
+### 5.10.3 Variance Explained by Principal Components
+
+We now assess how much variance each principal component captures.
+
+```{r pca-variance-summary}
+# Show variance explained by each component
+summary(pca_result)
+```
+
+You can also visualize it more clarly:
+
+```{r pca-variance-plot}
+# Variance proportion
+pca_var <- summary(pca_result)$importance[2, 1:10]  # Proportion of variance
+
+# Barplot
+barplot(pca_var,
+        names.arg = paste0("PC", 1:10),
+        main = "Variance Explained by Top 10 Principal Components",
+        xlab = "Principal Component",
+        ylab = "Proportion of Variance",
+        col = "steelblue")
+```
+
+**Interpretation**:
+
+- PC1 captures about 13–14% of the total variance, followed by PC2 with around 11%.
+- The first 2 components together explain approximately 25% of the total variability.
+- Additional components (PC3 to PC10) each add between 3% and 6%, showing that the variance is moderately distributed across many components.
+- This implies that the data’s structure is complex and not dominated by a single axis of variation.
+
+**Conclusion**:
+
+PCA confirms that:
+- Fraudulent transactions do not linearly separate from non-fraudulent ones in the first two components.
+- However, PCA remains valuable for:
+  - Anomaly detection and visual exploration,
+  - Dimensionality reduction before clustering or linear modeling,
+  - Reducing noise and multicollinearity in downstream tasks.
+  
+If used for modeling, a larger number of principal components should be retained to preserve enough information. Future steps could include training models on the top k components or integrating PCA into a pipeline with clustering techniques.
+
+### 5.11 Missing Data Analysis (NA Patterns)
+
+While we’ve previously reviewed missing value percentages across variables, visualizing their distribution across observations can reveal structured patterns—such as whether certain blocks of features tend to be missing together, or whether missingness is concentrated in specific transaction types.
+
+To do this, we generate a missing data heatmap of the top 50 variables with the highest proportion of missing values. Due to computational limits, we sample 5,000 rows from the full dataset.
+
+```{r na-heatmap-setup}
+# Step 1: select top 50 variables with highest NA percentage
+na_top_vars <- train_data %>%
+  summarise(across(everything(), ~ mean(is.na(.)))) %>%
+  pivot_longer(everything(), names_to = "variable", values_to = "na_rate") %>%
+  arrange(desc(na_rate)) %>%
+  slice(1:50) %>%
+  pull(variable)
+```
+
+Now we have selected the top 50 variables with the highest missingness. Next, we will visualize the missing data patterns.
+
+```{r na-heatmap-plot}
+# step 2: Sample for plotting
+set.seed(123)
+train_data_na_subset <- train_data %>%
+  select(all_of(na_top_vars)) %>%
+  slice_sample(n = 5000)
+
+# step3: Plot heatmap with rotated labels
+vis_miss(train_data_na_subset, sort_miss = TRUE) +
+  labs(title = "Missing Data Heatmap - Top 50 Variables (Sample of 5,000 Rows)") +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 90, hjust = 1, size = 7),
+    plot.title = element_text(size = 14, face = "bold")
+  )
+```
+
+**Interpretation**:
+
+- The majority of the top 50 variables exhibit high missingness, often above 85%, with some exceeding 95%.
+- There is clear horizontal banding, which suggests that missingness is not completely random—it may be associated with particular transaction types or sources.
+- Blocks of variables (e.g., many id_ or V features) appear to be missing together, possibly reflecting system-level logging gaps or different data collection pipelines.
+
+**Conclusion**:
+
+This visual supports previous numeric summaries and reinforces the need for:
+- Careful imputation strategies or selective removal of high-missingness features.
+- Exploring whether missingness itself is informative for predicting fraud (e.g., through missingness indicators).
+
+# 6. Summary and Next Steps
+
+This EDA provided deep insights into the structure, quality, and behavioral patterns of the [IEEE-CIS Fraud Detection](https://www.kaggle.com/competitions/ieee-fraud-detection) dataset. By analyzing categorical, temporal, and continuous features—as well as missing data and dimensional structure—we established a comprehensive foundation for building effective fraud detection models.
+
+**Key Findings:**
+
+- **Severe class imbalance**: Fraud accounts for only ~3.5% of all transactions.
+- **Behavioral patterns**: Fraud is more frequent in specific product types (`ProductCD` = `C`), card networks (`Discover`), and time windows (early hours of the day).
+- **Feature complexity**: No single variable shows strong linear correlation with fraud; importance is distributed and often nonlinear.
+- **Missingness**: Many features (especially id_ and Vxxx) exhibit >85% missing values, suggesting careful imputation or exclusion is needed.
+- **PCA analysis**: Confirms lack of linear separability between fraud and non-fraud classes, and highlights the complexity of the feature space.
+
+**Next steps:**
+
+1. **Feature Engineering**
+- Create binary flags (e.g., `IsMorning`, `IsWeekend`, `IsHighAmount`)
+- Encode categorical variables (One-Hot, Frequency, or Target Encoding)
+- Derive interaction terms or cluster-based features
+
+2. **Handle Missing Data**
+- Drop low-variance or extremely sparse variables (e.g., `V305`)
+- Impute missing values using median/mean or advanced models
+- Optionally, create missingness indicator features
+
+3. **Baseline Modeling**
+- Train interpretable models (Logistic Regression, Decision Trees)
+- Benchmark with ensemble methods (Random Forest, LightGBM, XGBoost)
+
+4. **Model Evaluation**
+- Use stratified k-fold cross-validation
+- Focus on ROC-AUC, Precision-Recall curves, and F1-score
+- Track performance on fraud detection sensitivity (Recall) and false positive rates
+
+5. **Pipeline Integration**
+- Prepare a clean preprocessing and modeling pipeline
+- Add feature selection or dimensionality reduction as needed
+- Explore advanced models (e.g., TabNet, AutoML, or neural networks if justified)
