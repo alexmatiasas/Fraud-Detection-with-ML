@@ -149,6 +149,7 @@ This class imbalance can lead machine learning models to be biased toward predic
 ggplot(train_data, aes(x = TransactionAmt, fill = factor(isFraud))) +
   geom_histogram(bins = 100, position = "identity", alpha = 0.6) +
   scale_x_log10() + 
+
   labs(
     title = "Transaction Amount Distribution (Log Scale)",
     x = "Transaction Amount (log scale)",
