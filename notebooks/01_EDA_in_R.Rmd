@@ -26,18 +26,7 @@ The main goals of this EDA are:
 
 # 2. Libraries
 
-We'll require the next libraries for data manipulation and visualization. If they are not installed, the code will install them automatically.
-
-```{r download-libraries}
-required_packages <- c("tidyverse", "data.table", "gridExtra", "skimr", "ggcorrplot", "ranger", "naniar")
-
-for (pkg in required_packages) {
-  if (!require(pkg, character.only = TRUE)) {
-    install.packages(pkg)
-    library(pkg, character.only = TRUE)
-  }
-}
-```
+We'll require the next libraries for data manipulation and visualization. 
 
 ```{r libraries}
 # Core libraries for data analysis and visualization
@@ -462,7 +451,6 @@ Now, we extend the distribution analysis to the full set of C variables.
 
 ```{r c-vars-full-distribution}
 # Identify C variables
-# Identify C variables
 c_vars <- names(train_data)[grepl("^C\\d+$", names(train_data))]
 
 # Convert to long format
@@ -495,7 +483,7 @@ ggplot(c_long, aes(x = Value, fill = factor(isFraud))) +
 plot_c_block <- function(vars_subset) {
   c_long_block <- c_long %>%
     filter(Variable %in% vars_subset) %>%
-    mutate(Variable = factor(Variable, levels = vars_subset))  # <-- Ordena como quieras
+    mutate(Variable = factor(Variable, levels = vars_subset)) 
 
   ggplot(c_long_block, aes(x = Value, fill = factor(isFraud))) +
     geom_histogram(bins = 60, position = "identity", alpha = 0.5) +
@@ -851,13 +839,13 @@ rf_model <- ranger(
 We extract the feature importances into a `tidy` dataframe, sorted in descending order.
 
 ```{r ranger-importance}
-# Convertir a data frame ordenado
+# Convert ordered importance to a tidy dataframe
 importance_df <- as.data.frame(rf_model$variable.importance) %>%
   tibble::rownames_to_column("Variable") %>%
   rename(Importance = `rf_model$variable.importance`) %>%
   arrange(desc(Importance))
 
-# Mostrar top 20
+# show top 20 features
 head(importance_df, 20)
 ```
 

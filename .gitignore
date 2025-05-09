@@ -15,7 +15,7 @@ __pycache__/
 *.py[cod]
 *.egg-info/
 *.pyo
-venv/
+.venv/
 env/
 .env
 
@@ -24,6 +24,11 @@ env/
 *.html
 *.utf8.md
 *.knit.md
+.virtual_documents/
+.jupyter/
+renv/library/
+renv/activate.R
+
 
 # ─── VSCode ──────────────────────────────────────────────────────
 .vscode/
