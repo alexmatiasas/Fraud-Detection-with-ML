@@ -35,6 +35,19 @@ This project applies machine learning techniques to detect fraudulent transactio
 - **Python** for modeling and deployment (`scikit-learn`, `XGBoost`, `Flask/FastAPI`)
 - **Docker** (optional) for reproducible environments
 
+## R Setup (for EDA)
+
+To reproduce the full EDA in R:
+
+1. Open `notebooks/01_EDA_in_R.Rmd` in RStudio.
+2. Ensure the following R packages are installed:
+   - `tidyverse`, `ggplot2`, `data.table`, `skimr`, `ranger`, `ggcorrplot`, `visdat`
+
+You can also knit the RMarkdown to HTML:
+```r
+rmarkdown::render("notebooks/01_EDA_in_R.Rmd")
+```
+
 ## Getting Started
 
 1. Clone the repository:
@@ -43,9 +56,20 @@ This project applies machine learning techniques to detect fraudulent transactio
     cd Fraud-Detection-with-ML
     ```
 
-2. Set up Python environment:
+2. Install dependencies using Poetry:
     ```bash
-    python -m venv venv
-    source venv/bin/activate
-    pip install -r requirements.txt
+    poetry install
     ```
+
+3. (Optional) Activate virtual environment:
+    ```bash
+    poetry shell
+    ```
+
+4. Register the environment for Jupyter notebooks:
+    ```bash
+    poetry run python -m ipykernel install --user --name=fraud-eda --display-name "Python (fraud-eda)"
+    ```
+
+5. Launch JupyterLab or open notebooks in VSCode:
+    - Select the kernel named `"Python (fraud-eda)"` in the top-right corner.
