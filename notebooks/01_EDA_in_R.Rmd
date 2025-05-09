@@ -233,7 +233,7 @@ This information could be useful to:
 
 ```{r temporal-features-plot2}
 ggplot(train_data, aes(x = TransactionDay, fill = factor(isFraud))) +
-  geom_bar(position = "fill") +
+  geom_bar(position = "fill") + # width=1 makes it no separation bars, but due to the nature of the data, we prefer to keep it with separation
   labs(
     title = "Fraud Ratio by Day of Week",
     x = "Day of Week",
