@@ -27,7 +27,6 @@ env/
 .virtual_documents/
 .jupyter/
 renv/library/
-renv/activate.R
 
 
 # ─── VSCode ──────────────────────────────────────────────────────
