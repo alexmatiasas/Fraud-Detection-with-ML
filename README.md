@@ -48,6 +48,10 @@ You can also knit the RMarkdown to HTML:
 rmarkdown::render("notebooks/01_EDA_in_R.Rmd")
 ```
 
+## Python Setup
+
+🔧 Plot styling is handled by src/visual_config.py, applied project-wide.
+
 ## Getting Started
 
 1. Clone the repository:
