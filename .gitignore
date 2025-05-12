@@ -44,10 +44,6 @@ data/external/
 *.h5
 !reports/model_metrics.csv
 
-# ─── Models ──────────────────────────────────────────────────────
-models/*
-!models/.gitkeep
-
 # ─── Airflow ─────────────────────────────────────────────────────
 logs/
 dags_output/
