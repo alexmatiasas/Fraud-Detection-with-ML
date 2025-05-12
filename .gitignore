@@ -27,6 +27,7 @@ env/
 .virtual_documents/
 .jupyter/
 renv/library/
+notebooks/catboost_info/
 
 
 # ─── VSCode ──────────────────────────────────────────────────────
@@ -41,6 +42,7 @@ data/external/
 *.pkl
 *.joblib
 *.h5
+!reports/model_metrics.csv
 
 # ─── Models ──────────────────────────────────────────────────────
 models/*

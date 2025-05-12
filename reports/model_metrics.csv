@@ -1,0 +1,13 @@
+Model,Accuracy,Precision,Recall,F1 Score,ROC AUC
+Logistic Regression,0.9723,0.8245,0.2637,0.3996,0.8559
+Random Forest,0.9797,0.9416,0.4486,0.6077,0.9326
+XGBoost,0.9847,0.9568,0.5894,0.7295,0.9234
+LightGBM,0.9775,0.882,0.4125,0.5621,0.9157
+CatBoost,0.9814,0.9457,0.497,0.6515,0.9174
+Logistic Regression (Tuned),0.9695,0.6974,0.2286,0.3444,0.8177
+Random Forest (Tuned),0.9771,0.9368,0.3695,0.5299,0.9109
+XGBoost (Tuned),0.9847,0.9568,0.5894,0.7295,0.9689
+LightGBM (Tuned),0.9851,0.9348,0.6175,0.7437,0.9643
+CatBoost (Tuned),0.9814,0.9457,0.497,0.6515,0.9351
+Ensemble (XGB + LGB + CAT),0.9841,0.9547,0.5715,0.715,0.9648
+Stacking (Meta: LogisticRegression),0.9868,0.9237,0.6792,0.7828,0.9691
