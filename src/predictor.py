@@ -28,7 +28,7 @@ def safe_impute(df: pd.DataFrame) -> pd.DataFrame:
         imputed = SimpleImputer(strategy="median").fit_transform(df[valid_num_cols])
         df[valid_num_cols] = pd.DataFrame(imputed, columns=valid_num_cols, index=df.index)
 
-    # Categorical
+    # Cathegorical
     cat_cols = df.select_dtypes(include=["object"]).columns
     valid_cat_cols = [col for col in cat_cols if df[col].notna().sum() > 0]
     if valid_cat_cols:
@@ -41,12 +41,12 @@ def preprocess_input(df: pd.DataFrame) -> pd.DataFrame:
     """Pipeline used during inference (always apply scaling)."""
     df = df.copy()
 
-    # Si aún hay columnas tipo object → imputamos y codificamos
+    # If we have object columns, we need to impute and encode them
     if not df.select_dtypes(include=["object"]).empty:
         df = safe_impute(df)
         df = encode_categorical(df)
 
-    # Escalado siempre debe aplicarse
+    # Scale features
     df = scale_features(df, fit=False)
 
     return df
@@ -61,9 +61,9 @@ def predict_fraud(df: pd.DataFrame, model=None):
 
     X = preprocess_input(df)
 
-    # Verifica si los datos no son todos ceros
+    # Verify that the input DataFrame has the same columns as the model
     print("📊 Preprocessed sample (first 5 cols):")
-    print(X.iloc[0, :5])  # solo algunas columnas
+    print(X.iloc[0, :5])  # just some columns to check
 
     if hasattr(model, "feature_names_in_"):
         X = X[model.feature_names_in_]

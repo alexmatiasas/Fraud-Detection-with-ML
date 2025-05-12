@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+*.egg
+*.egg-info/
+
+# Virtual environments
+.venv/
+env/
+venv/
+
+# Data and outputs
+data/ieee-fraud-detection/
+!data/processed/train_final_ready.csv
+reports/
+models/
+!models/final_model_stacking.pkl
+!models/label_encoders.pkl
+!models/scaler.pkl
+notebooks/
+renv/
+mlruns/
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# IDE/editor
+.vscode/
+.idea/
+
+# OS generated
+*.swp
