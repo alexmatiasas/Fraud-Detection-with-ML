@@ -4,20 +4,29 @@ from data_preprocessing import impute_missing_values, encode_categorical, scale_
 import joblib
 import os
 
-MODEL_PATH = os.path.join("..", "models", "final_model_stacking.pkl")
+# Obtain the absolute path to the model
+MODEL_PATH = os.path.join(
+    os.path.dirname(__file__), "..", "models", "final_model_stacking.pkl"
+)
+MODEL_PATH = os.path.abspath(MODEL_PATH)
 
 def safe_impute(df: pd.DataFrame) -> pd.DataFrame:
-    """Improved imputation: skips columns with all missing values."""
+    """Robust imputation: skip blocks where there are no valid columns."""
+    df = df.copy()
+
+    # Numerical imputation
     num_cols = df.select_dtypes(include=["float64", "int64"]).columns
+    num_cols_valid = [col for col in num_cols if df[col].notna().sum() > 0]
+    if num_cols_valid:
+        imputed_nums = SimpleImputer(strategy="median").fit_transform(df[num_cols_valid])
+        df[num_cols_valid] = pd.DataFrame(imputed_nums, columns=num_cols_valid, index=df.index)
+
+    # Cathegorical imputation
     cat_cols = df.select_dtypes(include=["object"]).columns
-    cat_cols = [col for col in cat_cols if df[col].notna().sum() > 0]
-
-    # Solo imputar si hay columnas válidas
-    if len(num_cols) > 0:
-        df[num_cols] = SimpleImputer(strategy="median").fit_transform(df[num_cols])
-
-    if len(cat_cols) > 0:
-        df[cat_cols] = SimpleImputer(strategy="most_frequent").fit_transform(df[cat_cols])
+    cat_cols_valid = [col for col in cat_cols if df[col].notna().sum() > 0]
+    if cat_cols_valid:
+        imputed_cats = SimpleImputer(strategy="most_frequent").fit_transform(df[cat_cols_valid])
+        df[cat_cols_valid] = pd.DataFrame(imputed_cats, columns=cat_cols_valid, index=df.index)
 
     return df
 
