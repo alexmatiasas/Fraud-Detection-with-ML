@@ -121,6 +121,69 @@ Visuals and metrics stored in `reports/figures/` and `reports/model_metrics.csv`
 - [ ] Deploy to the cloud (Render, Heroku, or AWS)
 - [ ] Document pipeline with MLFlow or similar
 
+## 📬 API Usage (Detailed)
+
+Once the FastAPI app is running locally (via `uvicorn src.main:app --reload`), you can:
+
+### 🔎 1. Access the Swagger UI
+
+Navigate to:
+
+```bash
+http://127.0.0.1:8000/docs
+```
+
+There, you'll see an interactive interface to:
+- Test the `/predict` endpoint
+- See the expected schema (auto-generated from the training dataset)
+- Send POST requests with transaction data
+
+### 🧾 2. Sample Request Format
+
+The request body must match the model used in training (feature names and types).
+
+✅ Valid example:
+```json
+{
+  "TransactionID": 3457624,
+  "TransactionAmt": 724.0,
+  "ProductCD": "W",
+  "card1": 7826,
+  "card2": 481,
+  "card3": 150,
+  "card4": "visa",
+  "card5": 224,
+  "card6": "credit",
+  "addr1": 387,
+  "addr2": 87,
+  "P_emaildomain": "gmail.com",
+  "C1": 3.0,
+  "D1": 45.0,
+  "V1": 1.0,
+  "id_01": -5.0
+  // ... truncated for brevity
+}
+```
+
+⛔ Avoid passing encoded or preprocessed data unless your API explicitly expects it. The backend handles:
+- Missing value imputation
+- Categorical encoding
+- Feature scaling
+
+✅ 3. Output
+
+If successful, the response will look like:
+
+```json
+{
+  "prediction": 1,
+  "fraud_probability": 0.8237
+}
+```
+
+Where:
+- "prediction": Final label (1 = fraud, 0 = not fraud)
+
 ## 💡 Author
 **Manuel Alejandro Matías Astorga**  
 Data Scientist | Physicist | Open Source Enthusiast  
