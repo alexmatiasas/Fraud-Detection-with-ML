@@ -96,7 +96,7 @@ def save_model_metrics_csv(
     model_name, y_true, y_pred, y_proba,
     filepath="../reports/model_metrics.csv", overwrite=True
 ):
-    # Calcular métricas
+    # Calculate metrics
     acc = round(accuracy_score(y_true, y_pred), 4)
     prec = round(precision_score(y_true, y_pred), 4)
     rec = round(recall_score(y_true, y_pred), 4)
@@ -112,22 +112,22 @@ def save_model_metrics_csv(
         "ROC AUC": auc
     }
 
-    # Crear archivo si no existe
+    # Create directory if it doesn't exist
     if not os.path.exists(filepath):
         df = pd.DataFrame([row])
     else:
         df = pd.read_csv(filepath)
 
-        # ¿Sobrescribir fila existente con mismo nombre?
+        # Overwrite existing model metrics if specified
         if overwrite and model_name in df["Model"].values:
             df = df[df["Model"] != model_name]
 
-        # ¿Ya existe la fila exacta? No hacer nada
+        # If not, check if the row already exists
         if row in df.to_dict(orient="records"):
             print(f"⚠️ Metrics for '{model_name}' already exist. Skipping.")
             return
 
-        # Agregar nueva fila
+        # Add new row
         df = pd.concat([df, pd.DataFrame([row])], ignore_index=True)
 
     df.to_csv(filepath, index=False)

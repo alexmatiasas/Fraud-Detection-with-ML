@@ -183,6 +183,18 @@ If successful, the response will look like:
 
 Where:
 - "prediction": Final label (1 = fraud, 0 = not fraud)
+- 
+## 🐳 Run with Docker
+
+To pull and run the model without installing anything:
+
+```bash
+docker pull alexmatiasastorga/fraud-api:latest
+docker run -d -p 8000:8000 alexmatiasastorga/fraud-api
+```
+
+Access the API at: http://localhost:8000/docs and follow the same instructions as [1. Access the Swagger UI](./README.md###🔎-1.-Access-the-Swagger-UI) in [📬 API Usage (Detailed)](./README.md#📬-API-Usage-(Detailed))
+
 
 ## 💡 Author
 **Manuel Alejandro Matías Astorga**  

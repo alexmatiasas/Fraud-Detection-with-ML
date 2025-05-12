@@ -5,6 +5,9 @@ description = "EDA and modeling pipeline for IEEE-CIS fraud detection dataset."
 authors = ["Alejandro Matías Astorga <alejandromatiasastorga@gmail.com>"]
 license = "MIT"
 readme = "README.md"
+packages = [
+  { include = "src" }
+]
 
 [tool.poetry.dependencies]
 python = "^3.10"
