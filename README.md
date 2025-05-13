@@ -1,5 +1,11 @@
 # Fraud Detection with Machine Learning
 
+[![Docker Pulls](https://img.shields.io/docker/pulls/alexmatiasastorga/fraud-api.svg)](https://hub.docker.com/r/alexmatiasastorga/fraud-api)
+[![Python](https://img.shields.io/badge/python-3.10-blue.svg)](https://www.python.org/downloads/release/python-3100/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Last Commit](https://img.shields.io/github/last-commit/alexmatiasas/Fraud-Detection-with-ML.svg)](https://github.com/alexmatiasas/Fraud-Detection-with-ML/commits/main)
+[![Repo Size](https://img.shields.io/github/repo-size/alexmatiasas/Fraud-Detection-with-ML.svg)](https://github.com/alexmatiasas/Fraud-Detection-with-ML)
+
 > A complete machine learning pipeline for detecting fraudulent transactions using the IEEE-CIS dataset.
 > Includes EDA, ensemble modeling, a FastAPI deployment, and automated tests — ready for production or research.
 
@@ -18,7 +24,6 @@ This project applies machine learning techniques to detect fraudulent transactio
 ├── notebooks/                 # EDA, modeling, deployment workflows
 ├── reports/                   # Metrics, ROC curves, confusion matrices
 ├── src/                       # Source code (preprocessing, API, training)
-├── requirements.txt           # Python dependencies (if not using Poetry)
 ├── pyproject.toml             # Poetry config
 ├── README.md
 └── LICENSE
