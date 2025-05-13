@@ -1,5 +1,8 @@
 # Fraud Detection with Machine Learning
 
+> A complete machine learning pipeline for detecting fraudulent transactions using the IEEE-CIS dataset.
+> Includes EDA, ensemble modeling, a FastAPI deployment, and automated tests — ready for production or research.
+
 This project applies machine learning techniques to detect fraudulent transactions using the IEEE-CIS Fraud Detection dataset. It integrates robust preprocessing, model training, evaluation, and deployment via an interactive API.
 
 ## 📁 Project Structure
@@ -34,6 +37,14 @@ This project applies machine learning techniques to detect fraudulent transactio
 - ✅ Evaluate performance with metrics & plots
 - ✅ Deploy best model with FastAPI
 - ✅ Interact with the model through Swagger UI
+
+## 🌟 Highlights
+
+- 📊 Performed deep EDA in R and Python with statistical plots and correlation matrices.
+- 🤖 Built and compared 6 ML models (including stacking ensemble) with tuned hyperparameters.
+- 🧪 Implemented unit tests with `pytest` for model and preprocessing pipeline.
+- 🔌 Deployed model via FastAPI and documented with Swagger UI.
+
 
 ## 🛠️ Tech Stack
 
@@ -114,10 +125,22 @@ Visuals and metrics stored in `reports/figures/` and `reports/model_metrics.csv`
 - ROC curves
 - Ensemble comparison heatmaps
 
+## ✅ Testing
+
+Basic unit tests included for:
+- Preprocessing pipeline
+- Ensemble model prediction
+
+To run tests:
+```bash
+pytest tests/
+```
+
 ## 📌 Next Steps
 
-- [ ] Add Airflow DAG to automate pipeline from preprocessing to inference
-- [ ] Containerize with Docker
+- [x] Containerize with Docker
+- [x] Unit testing with pytest
+- [ ] Add Airflow DAG to automate pipeline
 - [ ] Deploy to the cloud (Render, Heroku, or AWS)
 - [ ] Document pipeline with MLFlow or similar
 
@@ -183,7 +206,7 @@ If successful, the response will look like:
 
 Where:
 - "prediction": Final label (1 = fraud, 0 = not fraud)
-- 
+
 ## 🐳 Run with Docker
 
 To pull and run the model without installing anything:

@@ -1,0 +1,51 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U airflow"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  airflow-webserver:
+    image: custom-airflow
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow
+    ports:
+      - "8080:8080"
+    command: webserver
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./src:/app/src
+      - ./models:/app/models
+      - ./data:/app/data
+      
+
+  airflow-scheduler:
+    image: custom-airflow
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: scheduler
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./src:/app/src
+      - ./models:/app/models
+      - ./data:/app/data
+
+volumes:
+  postgres_data:
