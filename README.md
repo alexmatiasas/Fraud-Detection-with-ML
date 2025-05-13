@@ -223,6 +223,13 @@ docker run -d -p 8000:8000 alexmatiasastorga/fraud-api
 
 Access the API at: http://localhost:8000/docs and follow the same instructions as [1. Access the Swagger UI](./README.md###🔎-1.-Access-the-Swagger-UI) in [📬 API Usage (Detailed)](./README.md#📬-API-Usage-(Detailed))
 
+## 🔒 Security Notice
+
+This project includes Apache Airflow as part of an experimental pipeline orchestration setup. However, Airflow is not currently deployed nor exposed to the public in any environment.
+
+GitHub may flag known vulnerabilities in the current Airflow version (`requirements.txt` in `docker/airflow/`). These are **acknowledged** and will be addressed before any production deployment.
+
+**Current status**: Airflow DAGs are paused and not used in active inference or automation.
 
 ## 💡 Author
 **Manuel Alejandro Matías Astorga**  
