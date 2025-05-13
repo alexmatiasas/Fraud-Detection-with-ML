@@ -25,7 +25,8 @@ def impute_missing_values(df):
     num_cols = df.select_dtypes(include=["float64", "int64"]).columns
     cat_cols = df.select_dtypes(include=["object"]).columns
     df[num_cols] = SimpleImputer(strategy="median").fit_transform(df[num_cols])
-    df[cat_cols] = SimpleImputer(strategy="most_frequent").fit_transform(df[cat_cols])
+    if not cat_cols.empty:
+        df[cat_cols] = SimpleImputer(strategy="most_frequent").fit_transform(df[cat_cols])
     return df
 
 
@@ -51,16 +52,17 @@ def encode_categorical(df, fit=False):
 
 
 def scale_features(df, fit=False):
-    num_cols = df.select_dtypes(include=["float64", "int64"]).columns
     df_copy = df.copy()
+    num_cols = df_copy.select_dtypes(include=['float64', 'int64']).columns
 
-    if fit:
-        scaler = StandardScaler()
-        df_copy[num_cols] = scaler.fit_transform(df_copy[num_cols])
-        joblib.dump(scaler, SCALER_PATH)
+    scaler = joblib.load("models/scaler.pkl")
+
+    if hasattr(scaler, "feature_names_in_"):
+        cols_to_use = scaler.feature_names_in_
     else:
-        scaler = joblib.load(SCALER_PATH)
-        df_copy[num_cols] = scaler.transform(df_copy[num_cols])
+        cols_to_use = num_cols  # fallback si no está definida
+
+    df_copy[cols_to_use] = scaler.transform(df_copy[cols_to_use])
 
     return df_copy
 
