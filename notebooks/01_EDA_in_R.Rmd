@@ -4,7 +4,7 @@ author: "Manuel Alejandro Matías Astorga"
 output:
   html_document:
     toc: true
-    toc_depth: 2
+    toc_depth: 3
     number_sections: false
     theme: flatly
 ---
@@ -13,7 +13,7 @@ output:
 knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 ```
 
-# 1. Introduction
+## 1. Introduction
 
 This notebook presents an Exploratory Data Analysis (EDA) of the [IEEE-CIS Fraud Detection](https://www.kaggle.com/competitions/ieee-fraud-detection) dataset, originally provided by Vesta Corporation for a Kaggle competition. The dataset contains anonymized transactional and identity information with the aim of building models to detect fraudulent transactions.
 
@@ -24,9 +24,9 @@ The main goals of this EDA are:
 - To explore key variables (e.g., transaction amount, time, email domain, device info).
 - To prepare meaningful insights that will guide future feature engineering and modeling steps.
 
-# 2. Libraries
+## 2. Libraries
 
-We'll require the next libraries for data manipulation and visualization. 
+We'll require the next libraries for data manipulation and visualization.
 
 ```{r libraries}
 # Core libraries for data analysis and visualization
@@ -42,7 +42,7 @@ library(ranger)       # Fast implementation of random forests
 library(naniar)       # Tools for visualizing and handling missing data
 ```
 
-# 3. Data Loading
+## 3. Data Loading
 
 The dataset is composed of two main training files:
 
@@ -67,7 +67,7 @@ train_data <- merge(train_transaction, train_identity, by = "TransactionID", all
 dim(train_data)
 ```
 
-`train_transaction` contains 590,540 rows and 394 columns, while `train_identity` has 144,233 rows and 41 columns. 
+`train_transaction` contains 590,540 rows and 394 columns, while `train_identity` has 144,233 rows and 41 columns.
 
 This results in a merged dataset named `train_data`, with:
 
@@ -78,11 +78,11 @@ Note: Although `train_transaction` and `train_identity` contain 394 and 41 colum
 
 Due to the high dimensionality and anonymized nature of the dataset (434 features), we selectively explore only a subset of features that are either commonly interpretable (e.g., `TransactionAmt`, `DeviceType`, `Email Domains`) or structurally relevant (e.g., `C1-C2`, `D1-D15`). Exploring all features manually is not scalable, and later stages of this project will incorporate variable importance and dimensionality reduction techniques (e.g., Random Forest, PCA) to guide modeling.
 
-# 4. Data Overview
+## 4. Data Overview
 
 Let's analyze the dataset to understand its structure, missing values, and class balance.
 
-## 4.1 Missing Values
+### 4.1 Missing Values
 
 To assess the quality of the data, we calculated the percentage of missing values in each column using the `summarise_all(~ mean(is.na(.)))` function chain. This provides a quick overview of how much information is missing in each feature.
 
@@ -105,7 +105,7 @@ From the results above, we observe that several variables (especially `id_24`, `
 
 This information will be key during the feature selection and preprocessing phases.
 
-## 4.2 Class Balance
+### 4.2 Class Balance
 
 This dataset is highly imbalanced, with a strong predominance of non-fraudulent transactions. Understanding this imbalance is crucial before training machine learning models, as it can bias the models toward the majority class.
 
@@ -129,10 +129,9 @@ This class imbalance can lead machine learning models to be biased toward predic
 - **Class weighting**: penalizing misclassification of minority class more.
 - **Anomaly detection approaches**: modeling the rare class as outliers.
 
+## 5. Exploratory Visualizations
 
-# 5. Exploratory Visualizations
-
-## 5.1 Transaction Amount Distribution
+### 5.1 Transaction Amount Distribution
 
 ```{r transaction-amound}
 ggplot(train_data, aes(x = TransactionAmt, fill = factor(isFraud))) +
@@ -154,7 +153,7 @@ ggplot(train_data, aes(x = TransactionAmt, fill = factor(isFraud))) +
 - Using log10 scaling on the x-axis helps reveal distribution patterns that would otherwise be compressed due to skewness.
 - Peaks around certain amounts (like ~$100) suggest transaction rounding behavior, which may be informative for feature engineering.
 
-## 5.2 Device Info
+### 5.2 Device Info
 
 ```{r device-info}
 # Compute top 10 most common device types
@@ -181,12 +180,13 @@ This suggests the need for careful handling of this feature, potentially through
 The bar chart shows the top 10 most frequent values of the `DeviceInfo` column. The most common entry is clearly `"NA"`, which represents missing values. However, we also observe an unlabeled bar just below `"Windows"`, indicating the presence of empty strings (`""`).
 
 This distinction is important:
+
 - `NA` represents *missing data* in R.
 - `""` represents a *present but empty string*, often due to incomplete logging or device masking.
 
 These two cases should ideally be treated consistently, so we may consider replacing empty strings with `NA` before modeling or imputation.
 
-## 5.3 Temporal Features Analysis
+### 5.3 Temporal Features Analysis
 
 We start this section by converting the `TransactionDT` column to a more interpretable date-time format. The dataset begins at a reference point, which we define as "2017-12-01". This allows us to derive meaningful temporal features such as the hour of the transaction and the day of the week.
 
@@ -227,9 +227,9 @@ This plot shows the proportion of fraudulent vs. non-fraudulent transactions acr
   - Behavioral patterns specific to a time zone (which we can't determine precisely due to anonymization, but worth noting).
 
 This information could be useful to:
+
 - Engineer features like `IsMorning`, `IsNight`, etc.
 - Apply time-aware models or rules.
-
 
 ```{r temporal-features-plot2}
 ggplot(train_data, aes(x = TransactionDay, fill = factor(isFraud))) +
@@ -241,6 +241,7 @@ ggplot(train_data, aes(x = TransactionDay, fill = factor(isFraud))) +
     fill = "Is Fraud"
   )
 ```
+
 **Observation:**
 
 This bar plot shows the proportion of fraudulent transactions by day of the week.
@@ -252,7 +253,7 @@ This bar plot shows the proportion of fraudulent transactions by day of the week
 
 As a result, `TransactionDay` may have **limited predictive power on its own**, but could still be useful when combined with other temporal or categorical features.
 
-## 5.4 Categorical Features Analysis
+### 5.4 Categorical Features Analysis
 
 We will explore some categorical features that may provide insights into the fraud detection process. The following features are of particular interest:
 
@@ -284,6 +285,7 @@ ggplot(train_data, aes(x = ProductCD, fill = factor(isFraud))) +
 ```
 
 **Observation**:
+
 - Product code C has a noticeably higher fraud rate compared to the others.
 - This may suggest that some product categories are more prone to fraud, perhaps due to their price range, popularity, or nature of transactions.
 
@@ -301,6 +303,7 @@ ggplot(train_data, aes(x = card4, fill = factor(isFraud))) +
 ```
 
 **Observation**:
+
 - Among card types, `Discover` shows the highest fraud proportion.
 - `Visa` and `Mastercard` dominate in volume, but their fraud ratio is relatively lower.
 
@@ -318,6 +321,7 @@ ggplot(train_data, aes(x = card6, fill = factor(isFraud))) +
 ```
 
 **Observation**:
+
 - Fraud is more frequent in `credit` cards compared to `debit` or `charge` cards.
 - Transactions labeled as `debit or credit` are rare and also show lower fraud prevalence, this may due to the duplication of options since there is a separate `credit` and `debit` option..
 
@@ -343,10 +347,10 @@ ggplot(train_data %>% filter(P_emaildomain %in% top_p_domains),
 ```
 
 **Observation**:
+
 - Most common payer domains (e.g. `outlook.com`, `hotmail.com`, `gmail.com`, `yahoo.com`) show low fraud rates.
 - Fraud proportions appear relatively low across these domains, although `outlook.com` and `hotmail.com` show a slightly higher fraud ratio compared to others like `gmail.com` or `icloud.com`.
 - Domains like `anonymous.com` or rare email providers may require additional attention.
-
 
 - `R_emaildomain`
 
@@ -370,6 +374,7 @@ ggplot(train_data %>% filter(R_emaildomain %in% top_r_domains),
 ```
 
 **Observation**:
+
 - Recipient email domains exhibit wider variation.
 - Notably, domains such as `outlook.com`, `icloud.com` and `gmail.com` have higher fraud proportions, suggesting possible use in fraudulent operations.
 
@@ -387,16 +392,17 @@ ggplot(train_data, aes(x = DeviceType, fill = factor(isFraud))) +
 ```
 
 **Observation**:
+
 - `Mobile` transactions exhibit a slightly higher proportion of fraud compared to desktop.
 - This aligns with common patterns in fraud behavior exploiting less secure or unsupervised `mobile` environments.
 
-## 5.5 Continuous Features Analysis - C1 to C14
+### 5.5 Continuous Features Analysis - C1 to C14
 
 The dataset includes a family of anonymized continuous variables labeled `C1` through `C14.` These features likely capture aggregated behavioral metrics or historical transaction patterns.
 
 We will begin by visualizing `C1` and `C2` in detail, and then generalize the analysis to the entire set of C variables.
 
-### 5.5.1 C1 and C2 – Initial Exploration
+#### 5.5.1 C1 and C2 – Initial Exploration
 
 ```{r c1-and-c2-distribution}
 # Gather variables into long format for facetting
@@ -416,6 +422,7 @@ train_data %>%
 ```
 
 **Observation**:
+
 - The distributions are highly skewed to the right.
 - Fraudulent and non-fraudulent transactions overlap heavily in this space, though fine-grained differences might still be exploitable with modeling.
 - A log transformation improves visualization but still shows long-tailed distributions.
@@ -445,7 +452,7 @@ train_data %>%
 
 **Note**: While we remove outliers for visualization clarity, they are retained for modeling, as they may encode meaningful anomalies.
 
-### 5.5.2 General Analysis of C1–C14
+#### 5.5.2 General Analysis of C1–C14
 
 Now, we extend the distribution analysis to the full set of C variables.
 
@@ -514,9 +521,7 @@ plot_c_block(paste0("C", 11:14))
 skim(select(train_data, all_of(c_vars)))
 ```
 
-
-
-## 5.6 Continuous Features Analysis - D1 to D15
+### 5.6 Continuous Features Analysis - D1 to D15
 
 Let's check what are the `D` variables
 
@@ -525,7 +530,7 @@ Let's check what are the `D` variables
 names(train_data)[grepl("^D", names(train_data))]
 ```
 
-### 5.6.1 Distribution of D1 to D5 (Filtered < 99th Percentile)
+#### 5.6.1 Distribution of D1 to D5 (Filtered < 99th Percentile)
 
 The `D` variables are anonymous temporal or delay-related features. Since their meaning is unknown, we group and visualize them in blocks of five, filtering extreme outliers (above 99th percentile) to highlight more common patterns.
 
@@ -657,7 +662,7 @@ skim(select(train_data, all_of(d_vars)))
 
 Now that we have explored the individual distributions of continuous features, the next step is to evaluate pairwise correlations to detect redundancy and guide feature selection for the baseline model.
 
-## 5.7 Correlation Analysis
+### 5.7 Correlation Analysis
 
 In this section, we examine linear relationships between numeric variables to identify:
 
@@ -667,7 +672,7 @@ In this section, we examine linear relationships between numeric variables to id
 
 These insights can inform `feature selection`, `regularization`, and `dimensionality reduction` strategies such as `PCA` or `Lasso`.
 
-## 5.7.1 Selection of Numerical Features
+#### 5.7.1 Selection of Numerical Features
 
 We restrict the analysis to numeric variables with fewer than 20% missing values to ensure robustness of correlations.
 
@@ -688,7 +693,7 @@ train_data_num <- train_data %>%
   drop_na()
 ```
 
-## 5.7.2 Computing Correlation Matrix
+#### 5.7.2 Computing Correlation Matrix
 
 We compute the **Pearson correlation matrix** for the cleaned numeric dataset.
 
@@ -701,7 +706,7 @@ dim(cor_matrix)
 head(cor_matrix[, 1:5])
 ```
 
-## 5.7.3 Visualizing Correlation Matrix
+#### 5.7.3 Visualizing Correlation Matrix
 
 This global heatmap offers a high-level view of how numerical variables relate to each other.
 
@@ -716,7 +721,7 @@ ggcorrplot(cor_matrix,
 
 *Note: Due to the high number of features, the full matrix may be hard to interpret directly. The following sections highlight key patterns.*
 
-## 5.7.4 Top Correlations with `isFraud`
+#### 5.7.4 Top Correlations with `isFraud`
 
 We extract the variables most linearly associated with the target.
 
@@ -735,7 +740,7 @@ head(cor_target_sorted, 20)
 - The most correlated variables include V283, V281, V292, V291, V315, among others.
 - This suggests that fraud detection may require nonlinear patterns or interactions.
 
-### 5.7.5 Correlation Among Top Predictors
+#### 5.7.5 Correlation Among Top Predictors
 
 We isolate and visualize the top 15 variables most correlated with the target.
 
@@ -760,7 +765,7 @@ ggcorrplot(cor_subset,
   - Possible feature redundancy
   - Opportunities for aggregation or dimensionality reduction
 
-### 5.7.6 Detecting Multicollinearity (Corr > 0.90)
+#### 5.7.6 Detecting Multicollinearity (Corr > 0.90)
 
 To identify highly redundant variables, we extract all variable pairs with correlation above 0.90 (excluding self-correlation).
 
@@ -781,7 +786,7 @@ high_corr_df <- high_corr_df %>%
 head(high_corr_df, 10)
 ```
 
-**Observations**
+### Correlation Analysis Observations
 
 - The top variables correlated with isFraud (e.g., `V283`, `V281`, `V292`, `V315`, `V289`) exhibit relatively low Pearson correlation coefficients (mostly under 0.15). This suggests that no single variable is linearly predictive of fraud on its own, reaffirming the complex and subtle nature of fraud detection.
 - A subset of features (e.g., `V69`, `V90`, `V291`) show some moderate correlation, but these are likely to be more effective when used together or transformed (e.g., via non-linear models or interactions).
@@ -793,21 +798,22 @@ head(high_corr_df, 10)
   - `V95` ↔ `V101`, `V279`
   
 These indicate redundancy or multicollinearity, which could impact model stability and interpretability—particularly for linear models.
+
 - `TransactionID` was excluded from the analysis, as it is an identifier and does not convey predictive information about the target.
 
-**Next steps (planning)**
+### Next steps (planning)
 
 - Use dimensionality reduction techniques like *PCA* or *autoencoders* to handle correlated variables and reduce noise in the feature space.
 - Apply regularized models (e.g., *Lasso*, *Ridge*, *Elastic Net*) that can manage multicollinearity and perform variable selection automatically.
 - Consider dropping or consolidating highly correlated variables, especially where domain knowledge is lacking due to anonymization. Groupings like `Vxxx` or `Cxx` can also be explored via unsupervised clustering or feature aggregation.
 
-## 5.8 Feature Importance (Baseline Model)
+### 5.8 Feature Importance (Baseline Model)
 
 In this section, we estimate the relative importance of features using a **Random Forest** classifier. This approach allows us to identify which variables contribute most to the prediction of fraudulent transactions, even without optimizing the model for accuracy yet.
 
 We use the `ranger` package, a fast implementation of *Random Forests*, to compute variable importance based on **Gini impurity reduction**.
 
-### 5.8.1 Preparing data
+#### 5.8.1 Preparing data
 
 We reuse the cleaned numeric dataset (`train_data_num`) built in the correlation section. Since ranger requires the target variable to be a factor, we convert `isFraud` accordingly.
 
@@ -817,7 +823,7 @@ train_data_rf <- train_data_num %>%
   mutate(isFraud = factor(isFraud))  # Make sure it's a factor for ranking
 ```
 
-### 5.8.2 Training a Random Forest Model
+#### 5.8.2 Training a Random Forest Model
 
 We train a lightweight model with 100 trees, using default settings and `importance = "impurity"` to retrieve **Gini-based feature** rankings.
 
@@ -834,7 +840,7 @@ rf_model <- ranger(
 
 *Note: This model is not meant for final prediction but for preliminary insight into variable contributions.*
 
-### 5.8.3 Extracting and inspectioning importance
+#### 5.8.3 Extracting and inspectioning importance
 
 We extract the feature importances into a `tidy` dataframe, sorted in descending order.
 
@@ -849,7 +855,7 @@ importance_df <- as.data.frame(rf_model$variable.importance) %>%
 head(importance_df, 20)
 ```
 
-### 5.8.4 Ranking visualization
+#### 5.8.4 Ranking visualization
 
 The top 20 variables by importance are shown below.
 
@@ -867,7 +873,8 @@ importance_df %>%
   theme_minimal()
 ```
 
-**Observations**
+### Observations
+
 - The most important features for distinguishing fraud include:
   - `TransactionDT` (time-related)
   - `card1`, `card2`, `card5` (card identifiers)
@@ -880,7 +887,7 @@ importance_df %>%
   - Feature engineering (e.g., combinations or interactions)
   - Model interpretation and post-hoc analysis (e.g., SHAP, PDP)
   
-## 5.9 Cross-feature exploratory analysis
+### 5.9 Cross-feature exploratory analysis
 
 To better understand how fraud is distributed across categories, we compute the fraud rate for selected categorical variables. This highlights which categories are more likely to be associated with fraudulent behavior.
 
@@ -905,7 +912,7 @@ plot_fraud_rate <- function(data, var) {
 }
 ```
 
-### 5.9.1 Fraud Rate by `ProductCD`
+#### 5.9.1 Fraud Rate by `ProductCD`
 
 ```{r fraud-rate-productcd}
 # Plot for ProductCD
@@ -917,7 +924,7 @@ plot_fraud_rate(train_data, "ProductCD")
 - Category `C` has the highest fraud rate (nearly 12%), while `W` has the lowest.
 - This suggests that transactions involving product type `C` should be treated with increased scrutiny during model training or rule design.
 
-### 5.9.2 Fraud Rate by `card4`
+#### 5.9.2 Fraud Rate by `card4`
 
 ```{r fraud-rate-card4}
 # Plot for card4
@@ -929,7 +936,7 @@ plot_fraud_rate(train_data, "card4")
 - `Discover` cards exhibit the highest fraud rate (around 8%), compared to others like `Visa` and `Mastercard.`
 - This pattern may reflect underlying behavioral or systemic differences in transactions processed by these networks.
 
-### 5.9.3 Fraud Rate by `card6`
+#### 5.9.3 Fraud Rate by `card6`
 
 ```{r fraud-rate-card6}
 # Plot for card6
@@ -941,15 +948,15 @@ plot_fraud_rate(train_data, "card6")
 - `Credit` cards show a significantly higher fraud rate than debit cards.
 - This might relate to the differing risk profiles or spending habits associated with each type.
 
-### 5.9.4 Summary
+#### 5.9.4 Summary
 
 This cross-feature fraud rate analysis reinforces that some categorical variables are informative for fraud prediction. Product type (`ProductCD`), card provider (`card4`), and card type (`card6`) show meaningful variation in fraud rates across categories. These features may be especially valuable for downstream modeling, and further interaction effects could be explored.
 
-## 5.10 Dimensionality Reduction with PCA
+### 5.10 Dimensionality Reduction with PCA
 
 Principal Component Analysis (PCA) is a technique used to reduce the dimensionality of high-dimensional data by transforming correlated variables into a smaller number of uncorrelated variables called principal components. Although PCA is not ideal for interpretability, it is useful for visualizing potential separation between fraudulent and non-fraudulent transactions.
 
-### 5.10.1 Data Preparation for PCA
+#### 5.10.1 Data Preparation for PCA
 
 We use the cleaned numerical dataset from the correlation analysis (`train_data_num`) and apply **z-score standardization** (mean = 0, std. dev. = 1) to each variable before computing the principal components.
 
@@ -964,10 +971,11 @@ pca_data <- cbind(numeric_scaled, isFraud = train_data_num$isFraud)
 ```
 
 **Note**:
-	•	Out of 177 numeric features available (excluding `isFraud`), 176 were used in PCA.
-	•	The variable `V305` was excluded because it had zero variance (i.e., constant value across samples). Variables with zero variance do not contribute to PCA and must be removed.
 
-### 5.10.2 PCA Execution
+- Out of 177 numeric features available (excluding `isFraud`), 176 were used in PCA.
+- The variable `V305` was excluded because it had zero variance (i.e., constant value across samples). Variables with zero variance do not contribute to PCA and must be removed.
+
+#### 5.10.2 PCA Execution
 
 To make PCA computationally tractable, we randomly sample 10,000 observations from the dataset and remove variables with zero variance.
 
@@ -1008,7 +1016,7 @@ Interpretation:
 - Some outliers lie far along the principal axes, suggesting transactions that deviate significantly from typical behavior. These may be interesting candidates for anomaly detection.
 - Most fraudulent transactions are embedded within the large cloud of normal transactions, again reinforcing the challenge of detecting fraud via simple linear boundaries.
 
-### 5.10.3 Variance Explained by Principal Components
+#### 5.10.3 Variance Explained by Principal Components
 
 We now assess how much variance each principal component captures.
 
@@ -1042,6 +1050,7 @@ barplot(pca_var,
 **Conclusion**:
 
 PCA confirms that:
+
 - Fraudulent transactions do not linearly separate from non-fraudulent ones in the first two components.
 - However, PCA remains valuable for:
   - Anomaly detection and visual exploration,
@@ -1094,10 +1103,11 @@ vis_miss(train_data_na_subset, sort_miss = TRUE) +
 **Conclusion**:
 
 This visual supports previous numeric summaries and reinforces the need for:
+
 - Careful imputation strategies or selective removal of high-missingness features.
 - Exploring whether missingness itself is informative for predicting fraud (e.g., through missingness indicators).
 
-# 6. Summary and Next Steps
+## 6. Summary and Next Steps
 
 This EDA provided deep insights into the structure, quality, and behavioral patterns of the [IEEE-CIS Fraud Detection](https://www.kaggle.com/competitions/ieee-fraud-detection) dataset. By analyzing categorical, temporal, and continuous features—as well as missing data and dimensional structure—we established a comprehensive foundation for building effective fraud detection models.
 
@@ -1111,26 +1121,26 @@ This EDA provided deep insights into the structure, quality, and behavioral patt
 
 **Next steps:**
 
-1. **Feature Engineering**
-- Create binary flags (e.g., `IsMorning`, `IsWeekend`, `IsHighAmount`)
-- Encode categorical variables (One-Hot, Frequency, or Target Encoding)
-- Derive interaction terms or cluster-based features
+1. **Feature Engineering**:
+   - Create binary flags (e.g., `IsMorning`, `IsWeekend`, `IsHighAmount`)
+   - Encode categorical variables (One-Hot, Frequency, or Target Encoding)
+   - Derive interaction terms or cluster-based features
 
-2. **Handle Missing Data**
-- Drop low-variance or extremely sparse variables (e.g., `V305`)
-- Impute missing values using median/mean or advanced models
-- Optionally, create missingness indicator features
+2. **Handle Missing Data**:
+   - Drop low-variance or extremely sparse variables (e.g., `V305`)
+   - Impute missing values using median/mean or advanced models
+   - Optionally, create missingness indicator features
 
-3. **Baseline Modeling**
-- Train interpretable models (Logistic Regression, Decision Trees)
-- Benchmark with ensemble methods (Random Forest, LightGBM, XGBoost)
+3. **Baseline Modeling**:
+   - Train interpretable models (Logistic Regression, Decision Trees)
+   - Benchmark with ensemble methods (Random Forest, LightGBM, XGBoost)
 
-4. **Model Evaluation**
-- Use stratified k-fold cross-validation
-- Focus on ROC-AUC, Precision-Recall curves, and F1-score
-- Track performance on fraud detection sensitivity (Recall) and false positive rates
+4. **Model Evaluation**:
+   - Use stratified k-fold cross-validation
+   - Focus on ROC-AUC, Precision-Recall curves, and F1-score
+   - Track performance on fraud detection sensitivity (Recall) and false positive rates
 
-5. **Pipeline Integration**
-- Prepare a clean preprocessing and modeling pipeline
-- Add feature selection or dimensionality reduction as needed
-- Explore advanced models (e.g., TabNet, AutoML, or neural networks if justified)
+5. **Pipeline Integration**:
+   - Prepare a clean preprocessing and modeling pipeline
+   - Add feature selection or dimensionality reduction as needed
+   - Explore advanced models (e.g., TabNet, AutoML, or neural networks if justified)

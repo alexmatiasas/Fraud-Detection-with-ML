@@ -28,6 +28,7 @@ env/
 .jupyter/
 renv/library/
 notebooks/catboost_info/
+notebooks/rsconnect/
 
 
 # ─── VSCode ──────────────────────────────────────────────────────
