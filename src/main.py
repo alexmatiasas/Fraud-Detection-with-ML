@@ -12,11 +12,11 @@ if src_path not in sys.path:
 # ───────────────────────────────
 # Imports
 # ───────────────────────────────
-import pandas as pd
-from fastapi import FastAPI, HTTPException
-from pydantic import create_model, Field
-from predictor import predict_fraud, load_model
-from typing import Dict, Any
+import pandas as pd  # noqa: E402
+from fastapi import FastAPI, HTTPException  # noqa: E402
+from pydantic import BaseModel, Field, create_model  # noqa: E402
+
+from predictor import load_model, predict_fraud  # noqa: E402
 
 # ───────────────────────────────
 # Generate TransactionInput model
@@ -44,19 +44,21 @@ TransactionInput = create_model("TransactionInput", **fields)
 # FastAPI app
 # ───────────────────────────────
 app = FastAPI(
-    title="Fraud Detection API", 
-    description="Predict fraud probability based on transaction input."
+    title="Fraud Detection API",
+    description="Predict fraud probability based on transaction input.",
 )
 
 # Load model once
 model = load_model()
 
+
 @app.get("/")
 def root():
     return {"message": "Fraud Detection API is running"}
 
+
 @app.post("/predict")
-def predict(transaction: TransactionInput):
+def predict(transaction: BaseModel):
     try:
         df = pd.DataFrame([transaction.dict()])
         result = predict_fraud(df, model=model)

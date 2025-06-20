@@ -1,12 +1,18 @@
-import pandas as pd
 import os
+
 import joblib
-from sklearn.ensemble import StackingClassifier
+import pandas as pd
+from sklearn.ensemble import RandomForestClassifier, StackingClassifier
 from sklearn.linear_model import LogisticRegression
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report
-from data_preprocessing import impute_missing_values, encode_categorical, scale_features
+from sklearn.model_selection import train_test_split
+
+# fmt: off
+from data_preprocessing import (encode_categorical, impute_missing_values,
+                                scale_features)
+
+# fmt: on
+
 
 def train_model():
     # Load data
@@ -33,7 +39,9 @@ def train_model():
         ("rf", RandomForestClassifier(n_estimators=100, random_state=42)),
         ("lr", LogisticRegression(max_iter=1000)),
     ]
-    model = StackingClassifier(estimators=estimators, final_estimator=LogisticRegression())
+    model = StackingClassifier(
+        estimators=estimators, final_estimator=LogisticRegression()
+    )
 
     model.fit(X_train, y_train)
 
@@ -45,6 +53,7 @@ def train_model():
     model_path = os.path.join(project_root, "models", "final_model_stacking.pkl")
     joblib.dump(model, model_path)
     print(f"✅ Modelo guardado en {model_path}")
+
 
 if __name__ == "__main__":
     train_model()

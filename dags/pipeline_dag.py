@@ -1,13 +1,15 @@
+import sys
+from datetime import datetime
+
 from airflow import DAG
 from airflow.operators.python import PythonOperator
-from datetime import datetime
-import sys
+
+# ─── Import your training function ────────────────────────
+from model_training import train_model
 
 # ─── Add src directory to sys.path ────────────────────────
 sys.path.append("/app/src")
 
-# ─── Import your training function ────────────────────────
-from model_training import train_model
 
 # ─── Default DAG arguments ────────────────────────────────
 default_args = {
@@ -27,8 +29,7 @@ with DAG(
 ) as dag:
 
     train_model_task = PythonOperator(
-        task_id="train_model",
-        python_callable=train_model
+        task_id="train_model", python_callable=train_model
     )
 
     train_model_task

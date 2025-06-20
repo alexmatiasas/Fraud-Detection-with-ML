@@ -249,6 +249,6 @@ GitHub may flag known vulnerabilities in the current Airflow version (`requireme
 
 ## 💡 Author
 
-**Manuel Alejandro Matías Astorga**  
-Data Scientist | Physicist | Open Source Enthusiast  
+**Manuel Alejandro Matías Astorga**
+Data Scientist | Physicist | Open Source Enthusiast
 📧 Contact: [LinkedIn](https://www.linkedin.com/in/alexmatiasas) | [GitHub](https://github.com/alexmatiasas)

@@ -1,8 +1,10 @@
 import os
+
 import joblib
 import pandas as pd
 from sklearn.impute import SimpleImputer
-from data_preprocessing import impute_missing_values, encode_categorical, scale_features
+
+from data_preprocessing import encode_categorical, scale_features
 
 # ───────────────────────────────────────────────
 # Load trained model
@@ -11,9 +13,11 @@ MODEL_PATH = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..", "models", "final_model_stacking.pkl")
 )
 
+
 def load_model(path: str = MODEL_PATH):
     """Load the trained model from disk."""
     return joblib.load(path)
+
 
 # ───────────────────────────────────────────────
 # Safe preprocessing functions (used only if needed)
@@ -26,16 +30,23 @@ def safe_impute(df: pd.DataFrame) -> pd.DataFrame:
     valid_num_cols = [col for col in num_cols if df[col].notna().sum() > 0]
     if valid_num_cols:
         imputed = SimpleImputer(strategy="median").fit_transform(df[valid_num_cols])
-        df[valid_num_cols] = pd.DataFrame(imputed, columns=valid_num_cols, index=df.index)
+        df[valid_num_cols] = pd.DataFrame(
+            imputed, columns=valid_num_cols, index=df.index
+        )
 
     # Cathegorical
     cat_cols = df.select_dtypes(include=["object"]).columns
     valid_cat_cols = [col for col in cat_cols if df[col].notna().sum() > 0]
     if valid_cat_cols:
-        imputed = SimpleImputer(strategy="most_frequent").fit_transform(df[valid_cat_cols])
-        df[valid_cat_cols] = pd.DataFrame(imputed, columns=valid_cat_cols, index=df.index)
+        imputed = SimpleImputer(strategy="most_frequent").fit_transform(
+            df[valid_cat_cols]
+        )
+        df[valid_cat_cols] = pd.DataFrame(
+            imputed, columns=valid_cat_cols, index=df.index
+        )
 
     return df
+
 
 def preprocess_input(df: pd.DataFrame) -> pd.DataFrame:
     """Pipeline used during inference (always apply scaling)."""
@@ -50,6 +61,7 @@ def preprocess_input(df: pd.DataFrame) -> pd.DataFrame:
     df = scale_features(df, fit=False)
 
     return df
+
 
 # ───────────────────────────────────────────────
 # Prediction logic

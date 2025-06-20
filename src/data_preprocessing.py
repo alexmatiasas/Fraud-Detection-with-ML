@@ -1,11 +1,14 @@
 import os
+
 import joblib
 import pandas as pd
 from sklearn.impute import SimpleImputer
-from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.preprocessing import LabelEncoder
 
 # Define paths
-SCALER_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "models", "scaler.pkl"))
+SCALER_PATH = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "models", "scaler.pkl")
+)
 ENCODERS_PATH = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..", "models", "label_encoders.pkl")
 )
@@ -26,7 +29,9 @@ def impute_missing_values(df):
     cat_cols = df.select_dtypes(include=["object"]).columns
     df[num_cols] = SimpleImputer(strategy="median").fit_transform(df[num_cols])
     if not cat_cols.empty:
-        df[cat_cols] = SimpleImputer(strategy="most_frequent").fit_transform(df[cat_cols])
+        df[cat_cols] = SimpleImputer(strategy="most_frequent").fit_transform(
+            df[cat_cols]
+        )
     return df
 
 
@@ -53,7 +58,7 @@ def encode_categorical(df, fit=False):
 
 def scale_features(df, fit=False):
     df_copy = df.copy()
-    num_cols = df_copy.select_dtypes(include=['float64', 'int64']).columns
+    num_cols = df_copy.select_dtypes(include=["float64", "int64"]).columns
 
     scaler = joblib.load("models/scaler.pkl")
 

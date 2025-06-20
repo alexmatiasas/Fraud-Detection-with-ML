@@ -1,31 +1,34 @@
 import os
-import csv
-import pandas as pd
+
 import matplotlib.pyplot as plt
+import pandas as pd
 import seaborn as sns
-from sklearn.metrics import (
-    confusion_matrix,
-    accuracy_score,
-    precision_score,
-    recall_score,
-    f1_score,
-    roc_auc_score,
-    roc_curve,
-    auc,
-    classification_report
-)
+# fmt: off
+from sklearn.metrics import (accuracy_score, auc, classification_report,
+                             confusion_matrix, f1_score, precision_score,
+                             recall_score, roc_auc_score, roc_curve)
+
+# fmt: on
 
 # ─────────────────────────────────────────────
 # Confusion Matrix
 # ─────────────────────────────────────────────
 
+
 def plot_confusion_matrix_with_metrics(
-    y_true, y_pred, model_name="Model", labels=["Not Fraud", "Fraud"], cmap="Blues", save=False
+    y_true,
+    y_pred,
+    model_name="Model",
+    labels=None,
+    cmap="Blues",
+    save=False,
 ):
-    from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 
     cm = confusion_matrix(y_true, y_pred)
-    sns.heatmap(cm, annot=True, fmt="d", cmap=cmap, xticklabels=labels, yticklabels=labels)
+    sns.heatmap(
+        cm, annot=True, fmt="d", cmap=cmap, xticklabels=labels, yticklabels=labels
+    )
+    labels = ["Not Fraud", "Fraud"] if labels is None else labels
 
     # Metrics
     acc = accuracy_score(y_true, y_pred)
@@ -39,20 +42,24 @@ def plot_confusion_matrix_with_metrics(
     plt.tight_layout()
 
     # Metrics text block
-    metrics_text = f"Accuracy: {acc:.3f}\nPrecision: {prec:.3f}\nRecall: {rec:.3f}\nF1 Score: {f1:.3f}"
-    plt.gcf().text(0.95, 0.5, metrics_text, fontsize=10, va='center')
+    metrics_text = (
+        f"Accuracy: {acc:.3f}\n"
+        f"Precision: {prec:.3f}\n"
+        f"Recall: {rec:.3f}\n"
+        f"F1 Score: {f1:.3f}"
+    )
+    plt.gcf().text(0.95, 0.5, metrics_text, fontsize=10, va="center")
 
     if save:
         filename = f"conf_matrix_{model_name.lower().replace(' ', '_')}.png"
         save_plot(filename)
     plt.show()
 
+
 # ─────────────────────────────────────────────
 # ROC Curve
 # ─────────────────────────────────────────────
-def plot_roc_with_auc(
-    y_true, y_proba, model_name="Model", color="C0", save=False
-):
+def plot_roc_with_auc(y_true, y_proba, model_name="Model", color="C0", save=False):
     fpr, tpr, _ = roc_curve(y_true, y_proba)
     roc_auc = auc(fpr, tpr)
 
@@ -71,6 +78,7 @@ def plot_roc_with_auc(
         save_plot(filename)
     plt.show()
 
+
 # ─────────────────────────────────────────────
 # Classification Report
 # ─────────────────────────────────────────────
@@ -78,6 +86,7 @@ def print_classification_report(y_true, y_pred, model_name="Model"):
     """Prints a clean classification report with a heading."""
     print(f"\n📋 Classification Report – {model_name}")
     print(classification_report(y_true, y_pred))
+
 
 # ─────────────────────────────────────────────
 # Save current plot
@@ -92,9 +101,14 @@ def save_plot(filename, folder_relative_to_src="../reports/figures", dpi=300):
     plt.savefig(path, dpi=dpi, bbox_inches="tight")
     print(f"📁 Figure saved to: {path}")
 
+
 def save_model_metrics_csv(
-    model_name, y_true, y_pred, y_proba,
-    filepath="../reports/model_metrics.csv", overwrite=True
+    model_name,
+    y_true,
+    y_pred,
+    y_proba,
+    filepath="../reports/model_metrics.csv",
+    overwrite=True,
 ):
     # Calculate metrics
     acc = round(accuracy_score(y_true, y_pred), 4)
@@ -109,7 +123,7 @@ def save_model_metrics_csv(
         "Precision": prec,
         "Recall": rec,
         "F1 Score": f1,
-        "ROC AUC": auc
+        "ROC AUC": auc,
     }
 
     # Create directory if it doesn't exist

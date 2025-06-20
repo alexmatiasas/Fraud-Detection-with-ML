@@ -32,7 +32,7 @@ services:
       - ./src:/app/src
       - ./models:/app/models
       - ./data:/app/data
-      
+
 
   airflow-scheduler:
     image: custom-airflow
